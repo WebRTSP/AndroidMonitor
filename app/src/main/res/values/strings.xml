@@ -1,0 +1,21 @@
+<resources>
+    <string name="app_name">Video Monitor</string>
+
+    <string name="sources_screen_title">Video Sources</string>
+    <string name="source_name_label">Name (optional)</string>
+    <string name="source_url_label">Source URL</string>
+    <string name="source_url_placeholder" translatable="false">rtsp://…, http://…</string>
+    <string name="source_user_name_label">User name (optional)</string>
+    <string name="source_password_label">Password (optional)</string>
+
+    <string name="settings_screen_title">Settings</string>
+    <string name="track_motion_label">Track motion events (ONVIF)</string>
+    <string name="keep_screen_on_label">Keep screen on</string>
+
+    <string name="onvif_events_checker_notification_channel_name">Motion tracking</string>
+    <string name="onvif_events_checker_notification_title">Tracking motion events</string>
+    <string name="stop_motion_tracking_notification_action">Stop motion tracking</string>
+
+    <string name="motion_events_channel_name">Motion notifications</string>
+    <string name="motion_detected_notification_text">Motion detected!</string>
+</resources>

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Видео монитор</string>
+    <string name="sources_screen_title">Источники видео</string>
+    <string name="source_name_label">Имя (опционально)</string>
+    <string name="source_url_label">URL источника</string>
+    <string name="source_user_name_label">Имя пользователя (опционально)</string>
+    <string name="source_password_label">Пароль (опционально)</string>
+    <string name="settings_screen_title">Настройки</string>
+    <string name="track_motion_label">Отслеживать события движения (ONVIF)</string>
+    <string name="keep_screen_on_label">Блокировать выключение экрана</string>
+    <string name="onvif_events_checker_notification_channel_name">Отслеживание движений</string>
+    <string name="onvif_events_checker_notification_title">Отслеживание движений</string>
+    <string name="motion_events_channel_name">Оповещения о событиях движения</string>
+    <string name="motion_detected_notification_text">Обнаружено движение!</string>
+    <string name="stop_motion_tracking_notification_action">Остановить</string>
+</resources>

@@ -1,0 +1,3 @@
+[submodule "app/src/main/cpp/WebRTSP"]
+	path = app/src/main/cpp/WebRTSP
+	url = https://github.com/WebRTSP/WebRTSP.git
