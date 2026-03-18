@@ -4,54 +4,65 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme.colorScheme
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.runtime.getValue
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation3.runtime.NavKey
+import androidx.navigation3.runtime.entryProvider
+import androidx.navigation3.runtime.rememberNavBackStack
+import androidx.navigation3.ui.NavDisplay
+import dagger.hilt.android.AndroidEntryPoint
 import org.webrtsp.monitor.ui.theme.MonitorTheme
+import kotlinx.serialization.Serializable
 
+@Serializable
+sealed interface Screen : NavKey {
+    @Serializable data object NoSources : Screen
+    @Serializable data object SourceEdit : Screen
+    @Serializable data object SourceView : Screen
+}
+
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            MonitorTheme {
-                Scaffold(
-                    modifier = Modifier
-                        .fillMaxSize()
-                ) { innerPadding ->
-                    Box(modifier = Modifier
-                        .padding(innerPadding)
-                        .fillMaxSize()
-                    ) {
-                        Icon(
-                            modifier = Modifier
-                                .fillMaxWidth(0.3f)
-                                .aspectRatio(1f)
-                                .align(Alignment.Center),
-                            painter = painterResource(R.drawable.videocam_off),
-                            contentDescription = null,
-                            tint = colorScheme.outlineVariant,
+            MonitorTheme() {
+                val viewModel: MainActivityViewModel = hiltViewModel()
+                val hasSource by viewModel.hasSource.collectAsStateWithLifecycle()
+                val backStack = rememberNavBackStack()
+
+                when(val hasSource = hasSource) {
+                    DelayedValue.Loading -> return@MonitorTheme
+                    is DelayedValue.Ready -> {
+                        backStack.add(
+                            if(hasSource.value) Screen.SourceView
+                            else Screen.NoSources
                         )
                     }
                 }
+
+                NavDisplay(
+                    backStack = backStack,
+                    onBack = { backStack.removeLastOrNull() },
+                    entryProvider = entryProvider {
+                        entry<Screen.NoSources> {
+                            NoSourceScreen(addSource = {
+                                backStack.add(Screen.SourceEdit)
+                            })
+                        }
+                        entry<Screen.SourceEdit> { key ->
+                            SourceEditScreen(backStack)
+                        }
+                        entry<Screen.SourceView> {
+                            SourceViewScreen(editSource = {
+                                backStack.add(Screen.SourceEdit)
+                            })
+                        }
+                    }
+                )
             }
         }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    MonitorTheme {
     }
 }
