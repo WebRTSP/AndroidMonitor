@@ -7,8 +7,8 @@
 #include <gst/gst.h>
 #include <gst/video/videooverlay.h>
 
-#include "GstPtr.h"
-#include "Actor.h"
+#include "CxxPtr/GstPtr.h"
+#include "Helpers/Actor.h"
 
 
 namespace {
