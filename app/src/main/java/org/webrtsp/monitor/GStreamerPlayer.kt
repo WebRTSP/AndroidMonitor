@@ -14,7 +14,7 @@ class GStreamerPlayer(
 ): AutoCloseable {
     companion object {
         init {
-            System.loadLibrary("GStreamerPlayer")
+            System.loadLibrary("Monitor.native")
         }
     }
 

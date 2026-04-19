@@ -1,11 +1,11 @@
 cmake_minimum_required(VERSION 3.28)
 
-project(GStreamerPlayer)
+project(Monitor.native)
 
 set(HTTP_SUPPORT OFF CACHE BOOL "HTTP server is not used" FORCE)
 set(WS_SERVER_SUPPORT  OFF CACHE BOOL "libwebsocket based server is not used" FORCE)
 set(WS_CLIENT_SUPPORT OFF CACHE BOOL "libwebsocket based client is not used" FORCE)
-set(ONVIF_SUPPORT ON CACHE BOOL "ONVIF not used" FORCE)
+set(ONVIF_SUPPORT ON CACHE BOOL "ONVIF used" FORCE)
 add_subdirectory(WebRTSP)
 
 find_package(PkgConfig REQUIRED)
