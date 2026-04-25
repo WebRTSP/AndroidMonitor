@@ -22,4 +22,11 @@ class MainActivityViewModel @Inject constructor(
             SharingStarted.WhileSubscribed(5000),
             initialValue = DelayedValue.Loading
         )
+
+    private var _discoverer = ONVIFDiscoverer().also { it.discover() }
+    override fun onCleared() {
+        super.onCleared()
+
+        _discoverer.close()
+    }
 }

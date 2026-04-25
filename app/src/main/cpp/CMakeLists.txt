@@ -30,7 +30,13 @@ pkg_check_modules(GST_PLUGINS REQUIRED
 )
 
 set(SOURCES
+    JVMHelpers.h
+    JVMHelpers.cpp
+    ONVIFDiscoverer.cpp
+    GStreamerHelpers.h
+    GStreamerHelpers.cpp
     GStreamerPlayer.cpp
+    main.cpp
 )
 
 add_library(${PROJECT_NAME} SHARED ${SOURCES})
@@ -53,6 +59,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     log
     Helpers
     CxxPtr
+    ONVIF
 )
 
 #get_cmake_property(_variableNames VARIABLES)
