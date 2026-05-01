@@ -14,7 +14,7 @@ import javax.inject.Inject
 class SourceEditViewModel @Inject constructor(
     private val sourceRepository: SourceRepository
 ) : ViewModel() {
-    private var _discoverer = ONVIFDiscoverer().also { it.discover() }
+    private var _discoverer = ONVIFDiscoverer()
 
     val sourceUrl = sourceRepository.urlFlow
         .map { url -> DelayedValue.Ready(url) }

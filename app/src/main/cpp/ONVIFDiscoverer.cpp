@@ -1,6 +1,7 @@
 #include <jni.h>
 
 #include <memory>
+#include <future>
 
 #include "Helpers/Actor.h"
 
@@ -15,26 +16,31 @@ namespace {
 
 enum {
     SOAP_LISTEN_BACKLOG = 10,
-    SOAP_LISTEN_TIME = 5,
+    SOAP_LISTEN_TIME = 10,
 };
 
 const char* ONVIF_DISCOVERY_URL = "soap.udp://239.255.255.250:3702";
+
 }
 
 class ONVIFDiscoverer
 {
 public:
     enum class State {
-        Idle = 0,
+        Preparing = 0,
         Scanning = 1,
-        Error = 2,
+        Done = 2,
+        Error = 3,
     };
 
     ONVIFDiscoverer(JNIEnv*, jobject oppositeBank) noexcept;
-    void discover() noexcept;
+    ~ONVIFDiscoverer() noexcept;
 
 private:
+    void onStateChanged(State state) noexcept;
     void onDiscovered(const char* endpoint) noexcept;
+
+    void discover() noexcept;
 
 private:
     JavaVM *const _javaVm;
@@ -42,8 +48,9 @@ private:
     const jobject _oppositeBank;
     const jmethodID _onStateChangedJni;
     const jmethodID _onDiscoveredJni;
-    JNIEnv* _actorJniEnv = nullptr;
-    std::shared_ptr<Actor> _actor;
+    JNIEnv* _asyncJniEnv = nullptr;
+    SOAP _discoverSoap;
+    std::future<void> _discovery;
 
     friend void wsdd_event_ProbeMatches(
         struct soap*,
@@ -82,8 +89,6 @@ void wsdd_event_ResolveMatches(
     const char *RelatesTo,
     struct wsdd__ResolveMatchType *match)
 {
-    printf("wsdd_event_ResolveMatches tid:%s RelatesTo:%s\n", MessageID, RelatesTo);
-    printMatch(*match);
 }
 
 void wsdd_event_Hello(
@@ -147,61 +152,77 @@ ONVIFDiscoverer::ONVIFDiscoverer(
     _jniEnv(env),
     _oppositeBank(env->NewGlobalRef(oppositeBank)),
     _onStateChangedJni(GetMethodID(env, oppositeBank, "onStateChangedJni", "(I)V")),
-    _onDiscoveredJni(GetMethodID(env, oppositeBank, "onDiscoveredJni", "(Ljava/lang/String;)V"))
+    _onDiscoveredJni(GetMethodID(env, oppositeBank, "onDiscoveredJni", "(Ljava/lang/String;)V")),
+    _discoverSoap(SOAP_IO_UDP)
 {
-    static thread_local std::weak_ptr<Actor> sharedActor;
+    _discoverSoap->user = this;
 
-    if(sharedActor.expired()) {
-        _actor = std::make_shared<Actor>();
-        sharedActor = _actor;
-    } else {
-        _actor = sharedActor.lock();
-    }
+    discover();
+}
 
-    _actor->postAction([this] () {
-        _javaVm->AttachCurrentThread(&_actorJniEnv, nullptr);
-    });
+ONVIFDiscoverer::~ONVIFDiscoverer() noexcept
+{
+    // to stop possible still running discovery
+    soap_closesock(_discoverSoap);
+}
+
+void ONVIFDiscoverer::onStateChanged(State state) noexcept
+{
+    _asyncJniEnv->CallVoidMethod(
+        _oppositeBank,
+        _onStateChangedJni,
+        jint(static_cast<int>(state)));
 }
 
 void ONVIFDiscoverer::onDiscovered(const char* endpoint) noexcept
 {
-    _actorJniEnv->CallVoidMethod(
+    _asyncJniEnv->CallVoidMethod(
         _oppositeBank,
         _onDiscoveredJni,
-        _actorJniEnv->NewStringUTF(endpoint));
+        _asyncJniEnv->NewStringUTF(endpoint));
 }
 
 void ONVIFDiscoverer::discover() noexcept
 {
-    _actor->postAction([this] () {
-        SOAP listenSoap(SOAP_IO_UDP);
-        // listenSoap->connect_flags |= SO_BROADCAST; ??
-        listenSoap->user = this;
+    auto discover = [this] () {
+        onStateChanged(State::Scanning);
 
-        SOAP_SOCKET listenSocket = soap_bind(listenSoap, nullptr, 0, SOAP_LISTEN_BACKLOG);
+        SOAP_SOCKET listenSocket = soap_bind(_discoverSoap, nullptr, 0, SOAP_LISTEN_BACKLOG);
         if (!soap_valid_socket(listenSocket)) {
-            soap_print_fault(listenSoap, stderr);
+            soap_print_fault(_discoverSoap, stderr);
         }
 
         const char* type = "";
         const char* scope = nullptr; // "onvif://www.onvif.org/";
 
-        const char* probeMessageId = soap_wsa_rand_uuid(listenSoap);
+        const char* probeMessageId = soap_wsa_rand_uuid(_discoverSoap);
         const soap_status probeResult = soap_wsdd_Probe(
-            listenSoap,
-            SOAP_WSDD_ADHOC,
-            SOAP_WSDD_TO_TS,
-            ONVIF_DISCOVERY_URL,
-            probeMessageId,
-            nullptr,
-            type,
-            scope,
-            nullptr);
+                _discoverSoap,
+                SOAP_WSDD_ADHOC,
+                SOAP_WSDD_TO_TS,
+                ONVIF_DISCOVERY_URL,
+                probeMessageId,
+                nullptr,
+                type,
+                scope,
+                nullptr);
         if(probeResult != SOAP_OK) {
-            soap_print_fault(listenSoap, stderr);
+            onStateChanged(State::Error);
+            return;
         }
 
-        soap_wsdd_listen(listenSoap, SOAP_LISTEN_TIME);
+        if(soap_wsdd_listen(_discoverSoap, SOAP_LISTEN_TIME) != SOAP_OK) {
+            onStateChanged(State::Error);
+            return;
+        }
+
+        onStateChanged(State::Done);
+    };
+
+    _discovery = std::async(std::launch::async, [this, discover] () {
+        _javaVm->AttachCurrentThread(&_asyncJniEnv, nullptr);
+        discover();
+        _javaVm->DetachCurrentThread();
     });
 }
 
@@ -222,16 +243,4 @@ Java_org_webrtsp_monitor_ONVIFDiscoverer_jniClose(
     jlong handle)
 {
     delete reinterpret_cast<ONVIFDiscoverer*>(handle);
-}
-
-extern "C"
-JNIEXPORT void JNICALL
-Java_org_webrtsp_monitor_ONVIFDiscoverer_jniDiscover(
-    JNIEnv *env,
-    jobject /*thiz*/,
-    jlong handle)
-{
-    ONVIFDiscoverer* discoverer = reinterpret_cast<ONVIFDiscoverer*>(handle);
-
-    discoverer->discover();
 }

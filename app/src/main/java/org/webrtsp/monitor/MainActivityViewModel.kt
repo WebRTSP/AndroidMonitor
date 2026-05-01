@@ -23,7 +23,7 @@ class MainActivityViewModel @Inject constructor(
             initialValue = DelayedValue.Loading
         )
 
-    private var _discoverer = ONVIFDiscoverer().also { it.discover() }
+    private var _discoverer = ONVIFDiscoverer()
     override fun onCleared() {
         super.onCleared()
 

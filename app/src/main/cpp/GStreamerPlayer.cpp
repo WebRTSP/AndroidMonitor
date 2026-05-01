@@ -111,7 +111,7 @@ void GStreamerPlayer::onStateChanged(State state) noexcept
     _actorJniEnv->CallVoidMethod(
         _oppositeBank,
         _onStateChangedJni,
-        jboolean(static_cast<int>(state)));
+        jint(static_cast<int>(state)));
 }
 
 void GStreamerPlayer::onEos(bool error) noexcept
