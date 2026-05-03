@@ -38,7 +38,7 @@ public:
 
 private:
     void onStateChanged(State state) noexcept;
-    void onDiscovered(const char* endpoint) noexcept;
+    void onDiscovered(const char* endpoint, const char* scopes) noexcept;
 
     void discover() noexcept;
 
@@ -75,7 +75,9 @@ void wsdd_event_ProbeMatches(
     for(int i = 0; i < matches->__sizeProbeMatch; ++i) {
         const wsdd__ProbeMatchType& match = matches->ProbeMatch[i];
         if(match.XAddrs) {
-            discoverer->onDiscovered(match.XAddrs);
+            discoverer->onDiscovered(
+                match.XAddrs,
+                match.Scopes && match.Scopes->__item ? match.Scopes->__item: nullptr);
         }
     }
 }
@@ -151,8 +153,18 @@ ONVIFDiscoverer::ONVIFDiscoverer(
     _javaVm(GetJavaVM(env)),
     _jniEnv(env),
     _oppositeBank(env->NewGlobalRef(oppositeBank)),
-    _onStateChangedJni(GetMethodID(env, oppositeBank, "onStateChangedJni", "(I)V")),
-    _onDiscoveredJni(GetMethodID(env, oppositeBank, "onDiscoveredJni", "(Ljava/lang/String;)V")),
+    _onStateChangedJni(
+        GetMethodID(
+            env,
+            oppositeBank,
+            "onStateChangedJni",
+            "(I)V")),
+    _onDiscoveredJni(
+        GetMethodID(
+            env,
+            oppositeBank,
+            "onDiscoveredJni",
+            "(Ljava/lang/String;Ljava/lang/String;)V")),
     _discoverSoap(SOAP_IO_UDP)
 {
     _discoverSoap->user = this;
@@ -174,12 +186,13 @@ void ONVIFDiscoverer::onStateChanged(State state) noexcept
         jint(static_cast<int>(state)));
 }
 
-void ONVIFDiscoverer::onDiscovered(const char* endpoint) noexcept
+void ONVIFDiscoverer::onDiscovered(const char* endpoint, const char* scope) noexcept
 {
     _asyncJniEnv->CallVoidMethod(
         _oppositeBank,
         _onDiscoveredJni,
-        _asyncJniEnv->NewStringUTF(endpoint));
+        _asyncJniEnv->NewStringUTF(endpoint),
+        _asyncJniEnv->NewStringUTF(scope ? scope : ""));
 }
 
 void ONVIFDiscoverer::discover() noexcept
