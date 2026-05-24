@@ -210,15 +210,15 @@ void ONVIFDiscoverer::discover() noexcept
 
         const char* probeMessageId = soap_wsa_rand_uuid(_discoverSoap);
         const soap_status probeResult = soap_wsdd_Probe(
-                _discoverSoap,
-                SOAP_WSDD_ADHOC,
-                SOAP_WSDD_TO_TS,
-                ONVIF_DISCOVERY_URL,
-                probeMessageId,
-                nullptr,
-                type,
-                scope,
-                nullptr);
+            _discoverSoap,
+            SOAP_WSDD_ADHOC,
+            SOAP_WSDD_TO_TS,
+            ONVIF_DISCOVERY_URL,
+            probeMessageId,
+            nullptr,
+            type,
+            scope,
+            nullptr);
         if(probeResult != SOAP_OK) {
             onStateChanged(State::Error);
             return;
