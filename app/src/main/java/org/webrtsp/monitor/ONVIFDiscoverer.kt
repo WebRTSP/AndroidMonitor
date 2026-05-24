@@ -1,5 +1,6 @@
 package org.webrtsp.monitor
 
+import android.util.Log
 import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -51,6 +52,7 @@ class ONVIFDiscoverer(): AutoCloseable {
     // may be called from worker thread
     private fun onStateChangedJni(state: Int) {
         State.entries.find { it.id == state }?.also { state ->
+            Log.d(TAG, "state: $state")
             _state.value = state
         }
     }
@@ -76,7 +78,9 @@ class ONVIFDiscoverer(): AutoCloseable {
             }
 
         _discovered.update { discovered ->
-            discovered.put(uri.authority, Camera(uri, scopes))
+            val camera = Camera(uri, scopes)
+            Log.d(TAG, "discovered: $camera")
+            discovered.put(uri.authority, camera)
         }
     }
 
