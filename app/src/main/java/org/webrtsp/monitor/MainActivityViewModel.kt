@@ -12,7 +12,7 @@ import javax.inject.Inject
 class MainActivityViewModel @Inject constructor(
     sourcesRepository: SourcesRepository
 ) : ViewModel() {
-    val hasSource = sourcesRepository.activeSourceUrlFlow
+    val hasSource = sourcesRepository.activeSourceFlow
         .map { url -> DelayedValue.Ready(url != null) }
         .stateIn(
             viewModelScope,

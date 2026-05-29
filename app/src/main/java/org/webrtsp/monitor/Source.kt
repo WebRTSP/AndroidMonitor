@@ -10,9 +10,8 @@ fun Uri.toSourceId(): String {
 }
 
 data class Source (
-    val urn: String,
     val endpoint: Uri,
-    val userName: String?,
+    val user: String?,
     val password: String?,
     val name: String?,
 ) {
@@ -24,7 +23,6 @@ val Source?.id: String?
 
 fun SourceEntity.toSource(): Source {
     return Source(
-        this.urn,
         this.endpoint.toUri(),
         this.userName,
         this.password,
@@ -34,7 +32,6 @@ fun SourceEntity.toSource(): Source {
 
 fun ONVIFDiscoverer.Camera.toSource(): Source {
     return Source(
-        this.urn,
         this.endpoint,
         null,
         null,

@@ -10,6 +10,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import android.net.Uri
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toPersistentList
 import javax.inject.Inject
 
 
@@ -18,13 +20,12 @@ class SourceEditViewModel @Inject constructor(
     private val sourcesRepository: SourcesRepository
 ) : ViewModel() {
     private var _discoverer = ONVIFDiscoverer()
-
-    val discoveredCams = _discoverer.discovered
+    private val _discoveredCams = _discoverer.discovered
     val discoveryState = _discoverer.state
 
     val savedSources = sourcesRepository.allSources
 
-    val activeSourceUrl = sourcesRepository.activeSourceUrlFlow
+    val activeSourceUrl = sourcesRepository.activeSourceFlow
         .map { url -> DelayedValue.Ready(url) }
         .stateIn(
             viewModelScope,
@@ -32,7 +33,7 @@ class SourceEditViewModel @Inject constructor(
             initialValue = DelayedValue.Loading
         )
 
-    val sources = savedSources.combine(discoveredCams) { saved, discovered ->
+    val sources = savedSources.combine(_discoveredCams) { saved, discovered ->
             val discovered = discovered.associateByTo(
                 mutableMapOf<SourceId, ONVIFDiscoverer.Camera>()
             ) {
@@ -51,11 +52,11 @@ class SourceEditViewModel @Inject constructor(
                 sources[id] = camera.toSource()
             }
 
-            sources.toPersistentMap()
+            sources.values.toPersistentList()
         } .stateIn(
             viewModelScope,
             SharingStarted.WhileSubscribed(5000),
-            initialValue = mutableMapOf<SourceId, Source>()
+            initialValue = persistentListOf<Source>()
         )
 
     fun updateSourceUrl(url: Uri) {

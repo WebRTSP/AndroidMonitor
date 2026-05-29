@@ -43,18 +43,18 @@ class SourceViewViewModel @Inject constructor(
     private val _reconnectFlow = MutableStateFlow(SystemClock.elapsedRealtime())
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    val playbackState: StateFlow<PlaybackState> = sourcesRepository.activeSourceUrlFlow
-        .combine(_reconnectFlow) { sourceUrl, _ ->
-            sourceUrl
+    val playbackState: StateFlow<PlaybackState> = sourcesRepository.activeSourceFlow
+        .combine(_reconnectFlow) { source, _ ->
+            source
         }
-        .flatMapLatest { sourceUrl ->
+        .flatMapLatest { source ->
             callbackFlow {
-                if(sourceUrl == null) {
+                if(source == null) {
                     send(PlaybackState.NoUrl)
                 } else {
                     send(PlaybackState.Preparing)
 
-                    val player = GStreamerPlayer(sourceUrl).also { player ->
+                    val player = GStreamerPlayer(source.endpoint).also { player ->
                         _player = player
                     }
 

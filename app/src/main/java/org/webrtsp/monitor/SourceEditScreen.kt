@@ -100,22 +100,20 @@ fun SourceEdit(url: Uri?, updateUrlAndBack: (url: Uri) -> Unit) {
 }
 
 @Composable
-fun Camera(
-    uri: String,
-    camera: ONVIFDiscoverer.Camera,
+fun Source(
+    source: Source,
     isSelected: Boolean = true,
     onSelect: (uri: String) -> Unit
 ) {
-    val cameraUri = "${camera.endpoint.scheme}://${camera.endpoint.authority}"
     val headline: String
     val supporting: String
 
-    if(camera.name.isNullOrBlank()) {
-        headline = cameraUri
+    if(source.name.isNullOrBlank()) {
+        headline = source.id
         supporting = String()
     } else {
-        headline = camera.name
-        supporting = cameraUri
+        headline = source.name
+        supporting = source.id
     }
 
     ListItem(
@@ -123,7 +121,7 @@ fun Camera(
         supportingContent = { Text(supporting) },
         modifier = Modifier.selectable(
             selected = isSelected,
-            onClick = { onSelect(uri) },
+            onClick = { onSelect(source.id) },
         ),
         colors = ListItemDefaults.colors(
             containerColor = if (isSelected) {
@@ -148,7 +146,7 @@ fun SourceEditScreen(
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
     val sourceUrl by viewModel.activeSourceUrl.collectAsStateWithLifecycle()
-    val cams by viewModel.discoveredCams.collectAsStateWithLifecycle()
+    val sources by viewModel.sources.collectAsStateWithLifecycle()
 
     if(sourceUrl !is DelayedValue.Ready) {
         return
@@ -156,7 +154,7 @@ fun SourceEditScreen(
 
     var selectedCam by rememberSaveable {
         mutableStateOf(
-            (sourceUrl as DelayedValue.Ready<Uri?>).value?.toSourceId()
+            (sourceUrl as DelayedValue.Ready<Source?>).value?.endpoint?.toSourceId()
         )
     }
     val onSelect = remember {{ uri: String -> selectedCam = uri }}
@@ -179,11 +177,9 @@ fun SourceEditScreen(
         }
         */
 
-        /*
-        items(cams.toList(), key = { it.first }) { (uri, camera) ->
-            Camera(uri, camera, selectedCam == uri, onSelect )
+        items(sources, key = { it.id }) { source ->
+            Source(source, selectedCam == source.id, onSelect)
         }
-        */
     }
 
     Scaffold(

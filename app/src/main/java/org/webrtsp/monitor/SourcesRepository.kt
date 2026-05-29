@@ -38,15 +38,17 @@ class SourcesRepository @Inject constructor(
 ) {
     private object Keys {
         val URL = stringPreferencesKey("url")
+        val USER = stringPreferencesKey("user")
+        val PASSWORD = stringPreferencesKey("password")
     }
 
-    val activeSourceUrlFlow: Flow<Uri?> = dataStore.data.map { preferences ->
-        val urlString = preferences[Keys.URL]
+    val activeSourceFlow: Flow<Source?> = dataStore.data.map { preferences ->
+        val url = preferences[Keys.URL]
+        val user = preferences[Keys.USER]
+        val password = preferences[Keys.PASSWORD]
 
-        if(urlString.isNullOrBlank()) {
-            null
-        } else {
-            urlString.toUri()
+        url?.let { url ->
+            Source(url.toUri(), user, password, null)
         }
     }
 
