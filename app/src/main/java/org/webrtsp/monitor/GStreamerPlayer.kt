@@ -5,11 +5,11 @@ import android.os.Looper
 import android.view.Surface
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import java.net.URI
+import android.net.Uri
 
 
 class GStreamerPlayer(
-    url: URI,
+    url: Uri,
     looper: Looper = Looper.myLooper()!!
 ): AutoCloseable {
     companion object {

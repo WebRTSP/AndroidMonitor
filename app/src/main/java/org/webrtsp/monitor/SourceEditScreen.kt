@@ -1,12 +1,19 @@
 package org.webrtsp.monitor
 
+import android.content.res.Configuration
 import android.util.Patterns
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.material3.Button
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -20,6 +27,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -29,72 +37,107 @@ import androidx.navigation3.runtime.NavKey
 import org.webrtsp.monitor.ui.theme.MonitorTheme
 import org.webrtsp.monitor.ui.theme.buttonLabel
 import org.webrtsp.monitor.ui.theme.spacing
-import java.net.URI
+import android.net.Uri
 import java.net.URISyntaxException
+import androidx.core.net.toUri
 
 @Composable
-fun SourceEdit(url: URI?, updateUrlAndBack: (url: URI) -> Unit) {
+fun SourceEdit(url: Uri?, updateUrlAndBack: (url: Uri) -> Unit) {
     val isNew = url == null
 
-    Scaffold(
-        modifier = Modifier.fillMaxSize()
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .padding(innerPadding)
-                .padding(MaterialTheme.spacing.screenPadding)
-                .fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(
-                MaterialTheme.spacing.verticalSpacing,
-                Alignment.CenterVertically
-            )
-        ) {
-            var urlString by rememberSaveable { mutableStateOf(url?.toString() ?: "") }
-            val parsedUrl by remember {
-                derivedStateOf {
-                    if (!Patterns.WEB_URL.matcher(urlString).matches()) {
-                        null
-                    } else try {
-                        URI(urlString)
-                    } catch (_: URISyntaxException) {
-                        null
-                    }
+    Column(
+        modifier = Modifier
+            .fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(
+            MaterialTheme.spacing.verticalSpacing,
+            Alignment.CenterVertically
+        )
+    ) {
+        var urlString by rememberSaveable { mutableStateOf(url?.toString() ?: String()) }
+        val parsedUrl by remember {
+            derivedStateOf {
+                if (!Patterns.WEB_URL.matcher(urlString).matches()) {
+                    null
+                } else {
+                    urlString.toUri()
                 }
-            }
-
-            OutlinedTextField(
-                value = urlString,
-                onValueChange = { value ->
-                    urlString = value
-                },
-                placeholder = {
-                    Text(stringResource(R.string.url_placeholder))
-                },
-                singleLine = true,
-            )
-
-            val enableButton by remember {
-                derivedStateOf {
-                    parsedUrl != null && parsedUrl != url
-                }
-            }
-
-            val buttonTextResource = if (isNew)
-                R.string.add_button_text
-            else
-                R.string.update_button_text
-            Button(
-                onClick = { updateUrlAndBack(parsedUrl!!) },
-                enabled = enableButton,
-            ) {
-                Text(
-                    stringResource(buttonTextResource),
-                    style = MaterialTheme.typography.buttonLabel
-                )
             }
         }
+
+        OutlinedTextField(
+            value = urlString,
+            onValueChange = { value ->
+                urlString = value
+            },
+            placeholder = {
+                Text(stringResource(R.string.url_placeholder))
+            },
+            singleLine = true,
+        )
+
+        val enableButton by remember {
+            derivedStateOf {
+                parsedUrl != null && parsedUrl != url
+            }
+        }
+
+        val buttonTextResource = if (isNew)
+            R.string.add_button_text
+        else
+            R.string.update_button_text
+
+        Button(
+            onClick = { updateUrlAndBack(parsedUrl!!) },
+            enabled = enableButton,
+        ) {
+            Text(
+                stringResource(buttonTextResource),
+                style = MaterialTheme.typography.buttonLabel
+            )
+        }
     }
+}
+
+@Composable
+fun Camera(
+    uri: String,
+    camera: ONVIFDiscoverer.Camera,
+    isSelected: Boolean = true,
+    onSelect: (uri: String) -> Unit
+) {
+    val cameraUri = "${camera.endpoint.scheme}://${camera.endpoint.authority}"
+    val headline: String
+    val supporting: String
+
+    if(camera.name.isNullOrBlank()) {
+        headline = cameraUri
+        supporting = String()
+    } else {
+        headline = camera.name
+        supporting = cameraUri
+    }
+
+    ListItem(
+        headlineContent = { Text(headline) },
+        supportingContent = { Text(supporting) },
+        modifier = Modifier.selectable(
+            selected = isSelected,
+            onClick = { onSelect(uri) },
+        ),
+        colors = ListItemDefaults.colors(
+            containerColor = if (isSelected) {
+                MaterialTheme.colorScheme.primaryContainer
+            } else {
+                MaterialTheme.colorScheme.surface
+            },
+            headlineColor = if (isSelected) {
+                MaterialTheme.colorScheme.onPrimaryContainer
+            } else {
+                MaterialTheme.colorScheme.onSurface
+            }
+        )
+    )
 }
 
 @Composable
@@ -102,18 +145,64 @@ fun SourceEditScreen(
     backStack: NavBackStack<NavKey>,
     viewModel: SourceEditViewModel = hiltViewModel()
 ) {
-    val sourceUrl by viewModel.sourceUrl.collectAsStateWithLifecycle()
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+    val sourceUrl by viewModel.activeSourceUrl.collectAsStateWithLifecycle()
+    val cams by viewModel.discoveredCams.collectAsStateWithLifecycle()
 
-    when(val sourceUrl = sourceUrl) {
-        DelayedValue.Loading -> {}
-        is DelayedValue.Ready -> {
-            SourceEdit(
-                url = sourceUrl.value,
-                updateUrlAndBack = {
-                    url -> viewModel.updateSourceUrl(url)
-                    backStack.removeLastOrNull()
+    if(sourceUrl !is DelayedValue.Ready) {
+        return
+    }
+
+    var selectedCam by rememberSaveable {
+        mutableStateOf(
+            (sourceUrl as DelayedValue.Ready<Uri?>).value?.toSourceId()
+        )
+    }
+    val onSelect = remember {{ uri: String -> selectedCam = uri }}
+
+    val items:  LazyListScope.() -> Unit = {
+        /*
+        when(val sourceUrl = sourceUrl) {
+            DelayedValue.Loading -> {}
+            is DelayedValue.Ready -> {
+                item {
+                    SourceEdit(
+                        url = sourceUrl.value,
+                        updateUrlAndBack = {
+                            url -> viewModel.updateSourceUrl(url)
+                            backStack.removeLastOrNull()
+                        }
+                    )
                 }
-            )
+            }
+        }
+        */
+
+        /*
+        items(cams.toList(), key = { it.first }) { (uri, camera) ->
+            Camera(uri, camera, selectedCam == uri, onSelect )
+        }
+        */
+    }
+
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+    ) { innerPadding ->
+        if(isLandscape) {
+            LazyRow(modifier = Modifier
+                .padding(innerPadding)
+                .padding(MaterialTheme.spacing.screenPadding)
+            ) {
+                items()
+            }
+        } else {
+            LazyColumn(modifier = Modifier
+                .padding(innerPadding)
+                .padding(MaterialTheme.spacing.screenPadding)
+            ) {
+                items()
+            }
         }
     }
 }
@@ -130,6 +219,6 @@ fun NewSourceScreenPreview() {
 @Composable
 fun EditSourceScreenPreview() {
     MonitorTheme {
-        SourceEdit(url = URI("rtsp://127.0.0.1:554"), {})
+        SourceEdit(url = "rtsp://127.0.0.1:554".toUri(), {})
     }
 }

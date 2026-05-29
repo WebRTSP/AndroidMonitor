@@ -13,10 +13,11 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import java.net.URI
+import android.net.Uri
 import java.net.URISyntaxException
 import javax.inject.Inject
 import javax.inject.Singleton
+import androidx.core.net.toUri
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -31,28 +32,29 @@ object SourceModule {
 }
 
 @Singleton
-class SourceRepository @Inject constructor(
-    private val dataStore: DataStore<Preferences>
+class SourcesRepository @Inject constructor(
+    private val dataStore: DataStore<Preferences>,
+    private val sourcesDao: SourcesDao,
 ) {
     private object Keys {
         val URL = stringPreferencesKey("url")
     }
 
-    val urlFlow: Flow<URI?> = dataStore.data.map { preferences ->
+    val activeSourceUrlFlow: Flow<Uri?> = dataStore.data.map { preferences ->
         val urlString = preferences[Keys.URL]
 
         if(urlString.isNullOrBlank()) {
             null
-        } else try {
-            URI(urlString)
-        } catch (_: URISyntaxException) {
-            null
+        } else {
+            urlString.toUri()
         }
     }
 
-    suspend fun updateUrl(url: URI) {
+    suspend fun updateUrl(url: Uri) {
         dataStore.edit { preferences ->
             preferences[Keys.URL] = url.toString()
         }
     }
+
+    val allSources = sourcesDao.all()
 }

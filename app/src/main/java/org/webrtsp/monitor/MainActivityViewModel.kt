@@ -10,9 +10,9 @@ import javax.inject.Inject
 
 @HiltViewModel
 class MainActivityViewModel @Inject constructor(
-    sourceRepository: SourceRepository
+    sourcesRepository: SourcesRepository
 ) : ViewModel() {
-    val hasSource = sourceRepository.urlFlow
+    val hasSource = sourcesRepository.activeSourceUrlFlow
         .map { url -> DelayedValue.Ready(url != null) }
         .stateIn(
             viewModelScope,

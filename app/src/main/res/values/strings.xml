@@ -5,4 +5,5 @@
     <string name="password_label">Password (optional)</string>
     <string name="add_button_text">Set</string>
     <string name="update_button_text">Update</string>
+    <string name="use_camera_button_text">Use</string>
 </resources>

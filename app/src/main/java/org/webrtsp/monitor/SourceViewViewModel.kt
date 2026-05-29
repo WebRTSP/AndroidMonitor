@@ -31,7 +31,7 @@ enum class PlaybackState {
 
 @HiltViewModel
 class SourceViewViewModel @Inject constructor(
-    sourceRepository: SourceRepository
+    sourcesRepository: SourcesRepository
 ) : ViewModel() {
     companion object {
         private const val RECONNECT_MIN_DELAY = 3 // seconds
@@ -43,7 +43,7 @@ class SourceViewViewModel @Inject constructor(
     private val _reconnectFlow = MutableStateFlow(SystemClock.elapsedRealtime())
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    val playbackState: StateFlow<PlaybackState> = sourceRepository.urlFlow
+    val playbackState: StateFlow<PlaybackState> = sourcesRepository.activeSourceUrlFlow
         .combine(_reconnectFlow) { sourceUrl, _ ->
             sourceUrl
         }
