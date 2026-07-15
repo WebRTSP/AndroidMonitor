@@ -7,7 +7,7 @@
     <string name="source_user_name_label">Имя пользователя (опционально)</string>
     <string name="source_password_label">Пароль (опционально)</string>
     <string name="settings_screen_title">Настройки</string>
-    <string name="track_motion_label">Отслеживать события движения (ONVIF)</string>
+    <string name="track_motion_label">Отслеживать движениe (ONVIF)</string>
     <string name="keep_screen_on_label">Блокировать выключение экрана</string>
     <string name="onvif_events_checker_notification_channel_name">Отслеживание движений</string>
     <string name="onvif_events_checker_notification_title">Отслеживание движений</string>
