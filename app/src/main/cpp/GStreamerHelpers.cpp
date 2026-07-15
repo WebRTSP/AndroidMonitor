@@ -16,6 +16,10 @@ namespace {
         GST_PLUGIN_STATIC_DECLARE(openh264);
         GST_PLUGIN_STATIC_DECLARE(videoparsersbad);
         GST_PLUGIN_STATIC_DECLARE(rtpmanager);
+        GST_PLUGIN_STATIC_DECLARE(webrtc);
+        GST_PLUGIN_STATIC_DECLARE(nice);
+        GST_PLUGIN_STATIC_DECLARE(dtls);
+        GST_PLUGIN_STATIC_DECLARE(srtp);
     }
 
     void RegisterGStreamerPlugins() {
@@ -29,6 +33,10 @@ namespace {
         GST_PLUGIN_STATIC_REGISTER(openh264);
         GST_PLUGIN_STATIC_REGISTER(videoparsersbad);
         GST_PLUGIN_STATIC_REGISTER(rtpmanager);
+        GST_PLUGIN_STATIC_REGISTER(webrtc);
+        GST_PLUGIN_STATIC_REGISTER(nice);
+        GST_PLUGIN_STATIC_REGISTER(dtls);
+        GST_PLUGIN_STATIC_REGISTER(srtp);
     }
 
     void LogToLogcat(

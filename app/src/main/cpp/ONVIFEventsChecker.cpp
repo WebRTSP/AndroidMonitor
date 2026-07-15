@@ -251,18 +251,21 @@ Java_org_webrtsp_monitor_onvif_ONVIFEventsChecker_jniOpen(
     const char* userName = jUserName ? env->GetStringUTFChars(jUserName, nullptr) : nullptr;
     const char* password = jPassword ? env->GetStringUTFChars(jPassword, nullptr) : nullptr;
 
-    ONVIFEventsChecker* checker = new ONVIFEventsChecker(
-        endpoint,
-        userName,
-        password,
-        env,
-        thiz);
+    ONVIFEventsChecker* checker = nullptr;
+    if(endpoint && (!jUserName || userName) && (!jPassword || password)) {
+        checker = new ONVIFEventsChecker(
+            endpoint,
+            userName,
+            password,
+            env,
+            thiz);
+    }
 
-    if(jPassword)
+    if(jPassword && password)
         env->ReleaseStringUTFChars(jPassword, password);
-    if(jUserName)
+    if(jUserName && userName)
         env->ReleaseStringUTFChars(jUserName, userName);
-    if(jEndpoint)
+    if(jEndpoint && endpoint)
         env->ReleaseStringUTFChars(jEndpoint, endpoint);
 
     return reinterpret_cast<jlong>(checker);

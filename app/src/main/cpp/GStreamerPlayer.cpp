@@ -54,7 +54,7 @@ private:
 struct GStreamerPlayer::ActorContext: public Actor::Context {
     ActorContext(JavaVM *const javaVm) noexcept : javaVm(javaVm) {}
 
-    void activate() noexcept override {
+    void activate(Actor*, GMainContext*, GMainLoop*) noexcept override {
         javaVm->AttachCurrentThread(&actorJniEnv, nullptr);
     }
 
@@ -327,9 +327,12 @@ Java_org_webrtsp_monitor_GStreamerPlayer_jniOpen(
 
     const char* url = env->GetStringUTFChars(jUrl, nullptr);
 
-    GStreamerPlayer* player = new GStreamerPlayer(env, thiz, url);
+    GStreamerPlayer* player = nullptr;
+    if(url)
+        player = new GStreamerPlayer(env, thiz, url);
 
-    env->ReleaseStringUTFChars(jUrl, url);
+    if(jUrl && url)
+        env->ReleaseStringUTFChars(jUrl, url);
 
     return reinterpret_cast<jlong>(player);
 }
