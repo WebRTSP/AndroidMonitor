@@ -10,9 +10,13 @@
     <string name="track_motion_label">Отслеживать движениe (ONVIF)</string>
     <string name="track_motion_label_supporting">только при питании от сети</string>
     <string name="keep_screen_on_label">Блокировать выключение экрана</string>
+    <string name="restreamer_enabled_label">Разрешить ретрансляцию видео</string>
     <string name="onvif_events_checker_notification_channel_name">Отслеживание движений</string>
     <string name="onvif_events_checker_notification_title">Отслеживание движений</string>
     <string name="motion_events_channel_name">Оповещения о событиях движения</string>
     <string name="motion_detected_notification_text">Обнаружено движение!</string>
     <string name="stop_motion_tracking_notification_action">Остановить</string>
+    <string name="restreamer_notification_channel_name">Ретрансляция видео</string>
+    <string name="restreamer_notification_title">Ретрансляция видео активно</string>
+    <string name="stop_restreamer_notification_action">Остановить</string>
 </resources>

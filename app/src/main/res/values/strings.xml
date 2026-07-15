@@ -12,10 +12,15 @@
     <string name="track_motion_label">Track motion events (ONVIF)</string>
     <string name="track_motion_label_supporting">only with external power</string>
     <string name="keep_screen_on_label">Keep screen on</string>
+    <string name="restreamer_enabled_label">Enable video sharing</string>
 
     <string name="onvif_events_checker_notification_channel_name">Motion tracking</string>
     <string name="onvif_events_checker_notification_title">Tracking motion events</string>
     <string name="stop_motion_tracking_notification_action">Stop motion tracking</string>
+
+    <string name="restreamer_notification_channel_name">Video sources sharing</string>
+    <string name="restreamer_notification_title">Sharing video sources</string>
+    <string name="stop_restreamer_notification_action">Stop sharing</string>
 
     <string name="motion_events_channel_name">Motion notifications</string>
     <string name="motion_detected_notification_text">Motion detected!</string>

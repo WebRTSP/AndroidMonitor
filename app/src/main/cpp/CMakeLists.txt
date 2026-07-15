@@ -3,8 +3,7 @@ cmake_minimum_required(VERSION 3.28)
 project(Monitor.native)
 
 set(HTTP_SUPPORT OFF CACHE BOOL "HTTP server is not used" FORCE)
-set(WS_SERVER_SUPPORT  OFF CACHE BOOL "libwebsocket based server is not used" FORCE)
-set(WS_CLIENT_SUPPORT OFF CACHE BOOL "libwebsocket based client is not used" FORCE)
+set(SIGNALLING_SUPPORT ON CACHE BOOL "libwebsocket based client is used" FORCE)
 set(ONVIF_SUPPORT ON CACHE BOOL "ONVIF used" FORCE)
 add_subdirectory(WebRTSP)
 
@@ -40,6 +39,7 @@ set(SOURCES
     GStreamerHelpers.h
     GStreamerHelpers.cpp
     GStreamerPlayer.cpp
+    WebRTSPClient.cpp
     main.cpp
 )
 
@@ -64,6 +64,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     Helpers
     CxxPtr
     ONVIF
+    Signalling
 )
 
 #get_cmake_property(_variableNames VARIABLES)

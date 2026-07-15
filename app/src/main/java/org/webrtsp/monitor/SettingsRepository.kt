@@ -32,6 +32,7 @@ data class Settings(
     val keepScreenOn: Boolean,
     val motionPreviewDuration: Duration,
     val fullScreenIntentPermissionRequested: Boolean,
+    val reStreamerEnabled: Boolean,
 )
 
 @Singleton
@@ -45,11 +46,13 @@ class SettingsRepository @Inject constructor(
         val KEEP_SCREEN_ON = booleanPreferencesKey("keep_screen_on")
         val MOTION_PREVIEW_DURATION = intPreferencesKey("motion_preview_duration")
         val FULL_SCREEN_INTENT_PERMISSION_REQUESTED = booleanPreferencesKey("full_screen_intent_permission_requested")
+        val RE_STREAMER_ENABLED = booleanPreferencesKey("re_streamer_enabled")
     }
     private object Defaults {
         const val TRACK_MOTION = true
         const val KEEP_SCREEN_ON = false
         val MOTION_PREVIEW_DURATION = 10.seconds
+        const val RE_STREAMER_ENABLED = false
     }
 
     val allSourcesFlow = _sourcesDao.all()
@@ -79,14 +82,14 @@ class SettingsRepository @Inject constructor(
                     ?: Defaults.TRACK_MOTION,
                 preferences[Keys.KEEP_SCREEN_ON]
                     ?: Defaults.KEEP_SCREEN_ON,
-                preferences[Keys.MOTION_PREVIEW_DURATION] ?.seconds
+                preferences[Keys.MOTION_PREVIEW_DURATION]?.seconds
                     ?: Defaults.MOTION_PREVIEW_DURATION,
                 preferences[Keys.FULL_SCREEN_INTENT_PERMISSION_REQUESTED]
-                    ?: false
+                    ?: false,
+                preferences[Keys.RE_STREAMER_ENABLED]
+                    ?: Defaults.RE_STREAMER_ENABLED
             )
         }
-    val trackMotionFlow: Flow<Boolean> = settingsFlow
-        .map { settings -> settings.trackMotion }
     val keepScreenOnFlow: Flow<Boolean> = settingsFlow
         .map { settings -> settings.keepScreenOn }
     val motionPreviewDurationFlow: Flow<Duration> = settingsFlow
@@ -112,6 +115,12 @@ class SettingsRepository @Inject constructor(
     suspend fun setKeepScreenOn(keepScreenON: Boolean) {
         _dataStore.edit { preferences ->
             preferences[Keys.KEEP_SCREEN_ON] = keepScreenON
+        }
+    }
+
+    suspend fun setReStreamerEnabled(reStreamerEnabled: Boolean) {
+        _dataStore.edit { preferences ->
+            preferences[Keys.RE_STREAMER_ENABLED] = reStreamerEnabled
         }
     }
 

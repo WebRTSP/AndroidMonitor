@@ -37,18 +37,11 @@ fun SettingsScreen(
     onBack: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
-    val delayedTrackMotion by viewModel.trackMotion.collectAsStateWithLifecycle()
-    val trackMotion: Boolean
-    when(val delayedTrackMotion = delayedTrackMotion) {
+    val delayedUiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val uiState: SettingsViewModel.UiState
+    when(val delayedUiState = delayedUiState) {
         DelayedValue.Loading -> return
-        is DelayedValue.Ready -> trackMotion = delayedTrackMotion.value
-    }
-
-    val delayedKeepScreenOn by viewModel.keepScreenOn.collectAsStateWithLifecycle()
-    val keepScreenOn: Boolean
-    when(val delayedKeepScreenOn = delayedKeepScreenOn) {
-        DelayedValue.Loading -> return
-        is DelayedValue.Ready -> keepScreenOn = delayedKeepScreenOn.value
+        is DelayedValue.Ready -> uiState = delayedUiState.value
     }
 
     Scaffold(
@@ -106,7 +99,7 @@ fun SettingsScreen(
                     }
                 )
                 Switch(
-                    checked = trackMotion,
+                    checked = uiState.trackMotion,
                     onCheckedChange = { viewModel.setTrackMotion(it) }
                 )
             }
@@ -119,8 +112,19 @@ fun SettingsScreen(
             ) {
                 Text(stringResource(R.string.keep_screen_on_label))
                 Switch(
-                    checked = keepScreenOn,
+                    checked = uiState.keepScreenOn,
                     onCheckedChange = { viewModel.setKeepScreenOn(it) }
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text(stringResource(R.string.restreamer_enabled_label))
+                Switch(
+                    checked = uiState.reStreamerEnabled,
+                    onCheckedChange = { viewModel.setReStreamerEnabled(it) }
                 )
             }
         }

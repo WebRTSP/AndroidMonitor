@@ -54,7 +54,7 @@ private:
 struct GStreamerPlayer::ActorContext: public Actor::Context {
     ActorContext(JavaVM *const javaVm) noexcept : javaVm(javaVm) {}
 
-    void activate() noexcept override {
+    void activate(GMainContext*, GMainLoop*) noexcept override {
         javaVm->AttachCurrentThread(&actorJniEnv, nullptr);
     }
 

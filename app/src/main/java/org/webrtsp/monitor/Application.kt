@@ -14,6 +14,7 @@ import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import org.webrtsp.monitor.onvif.ONVIFEventTrackerService
+import org.webrtsp.monitor.restreamer.ReStreamerService
 import javax.inject.Inject
 
 
@@ -74,6 +75,12 @@ class Application : android.app.Application() {
                             activeSource)
                     } else {
                         ONVIFEventTrackerService.stopTracking(applicationContext)
+                    }
+
+                    if(settings.reStreamerEnabled) {
+                        ReStreamerService.startReStream(applicationContext)
+                    } else {
+                        ReStreamerService.stopReStream(applicationContext)
                     }
                 }
         }

@@ -13,16 +13,24 @@ import javax.inject.Inject
 class SettingsViewModel @Inject constructor(
     private val _settingsRepository: SettingsRepository
 ) : ViewModel() {
-   val trackMotion = _settingsRepository.trackMotionFlow
-        .map { DelayedValue.Ready(it) }
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = DelayedValue.Loading
-        )
+    data class UiState(
+        val trackMotion: Boolean,
+        val keepScreenOn: Boolean,
+        val reStreamerEnabled: Boolean,
+    )
 
-    val keepScreenOn = _settingsRepository.keepScreenOnFlow
-        .map { DelayedValue.Ready(it) }
+    val uiState = _settingsRepository.settingsFlow
+        .map { settings ->
+            with(settings) {
+                DelayedValue.Ready(
+                    UiState(
+                        trackMotion,
+                        keepScreenOn,
+                        reStreamerEnabled,
+                    )
+                )
+            }
+        }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
@@ -38,6 +46,12 @@ class SettingsViewModel @Inject constructor(
     fun setKeepScreenOn(keepScreenOn: Boolean) {
         viewModelScope.launch {
             _settingsRepository.setKeepScreenOn(keepScreenOn)
+        }
+    }
+
+    fun setReStreamerEnabled(reStreamerEnabled: Boolean) {
+        viewModelScope.launch {
+            _settingsRepository.setReStreamerEnabled(reStreamerEnabled)
         }
     }
 }
