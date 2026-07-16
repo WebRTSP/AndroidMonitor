@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
@@ -73,13 +74,17 @@ fun SettingsScreen(
         Column(
             modifier = Modifier
                 .padding(innerPadding)
-                .padding(MaterialTheme.spacing.screenPadding),
+                .padding(MaterialTheme.spacing.screenPadding)
+                .fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(
                 MaterialTheme.spacing.settingsItemsVerticalSpacing
             )
         ) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .widthIn(max = MaterialTheme.spacing.settingsContentMaxWidth)
+                    .fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
@@ -90,7 +95,9 @@ fun SettingsScreen(
                 )
             }
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .widthIn(max = MaterialTheme.spacing.settingsContentMaxWidth)
+                    .fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {

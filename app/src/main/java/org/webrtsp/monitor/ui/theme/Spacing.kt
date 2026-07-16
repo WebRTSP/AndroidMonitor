@@ -22,6 +22,7 @@ data class Spacing(
     val settingsItemsVerticalSpacing: Dp = 8.dp,
     val discoveringIconHeight: Dp = 32.dp,
     val rowSpacing: Dp = 8.dp,
+    val settingsContentMaxWidth: Dp = 512.dp,
 )
 
 val LocalSpacing = staticCompositionLocalOf { Spacing() }
