@@ -10,6 +10,7 @@
 
     <string name="settings_screen_title">Settings</string>
     <string name="track_motion_label">Track motion events (ONVIF)</string>
+    <string name="track_motion_label_supporting">only with external power</string>
     <string name="keep_screen_on_label">Keep screen on</string>
 
     <string name="onvif_events_checker_notification_channel_name">Motion tracking</string>
