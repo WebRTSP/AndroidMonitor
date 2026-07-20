@@ -1,16 +1,19 @@
 #include <jni.h>
 
+#include "CxxPtr/GlibPtr.h"
 #include "Helpers/Actor.h"
 #include "WebRTSP/Signalling/WsClient.h"
 
 #include "JVMBridge.h"
+#include "ClientSession.h"
+
 
 namespace {
 
 enum
 {
-    MIN_RECONNECT_TIMEOUT = 3, // seconds
-    MAX_RECONNECT_TIMEOUT = 10, // seconds
+    MIN_RECONNECT_DELAY = 3, // seconds
+    MAX_RECONNECT_DELAY = 10, // seconds
 };
 
 }
@@ -49,7 +52,8 @@ private:
     std::shared_ptr<Actor> _actor;
 };
 
-struct WebRTSPClient::ActorContext: public Actor::Context {
+struct WebRTSPClient::ActorContext : public Actor::Context
+{
     ActorContext(JavaVM *const javaVm) noexcept : javaVm(javaVm) {}
 
     void activate(GMainContext* mainContext, GMainLoop* mainLoop) noexcept override {
@@ -60,16 +64,31 @@ struct WebRTSPClient::ActorContext: public Actor::Context {
     }
 
     void deactivate() noexcept override {
+        if(reconnectTimeout) {
+            g_source_destroy(reconnectTimeout.get());
+            reconnectTimeout.reset();
+        }
+
         javaVm->DetachCurrentThread();
     }
+
+    std::unique_ptr<WebRTCPeer> createPeer(const std::string& uri);
 
     JavaVM *const javaVm;
     GMainContext* mainContext = nullptr;
     GMainLoop* mainLoop = nullptr;
     JNIEnv* actorJniEnv = nullptr;
 
+    std::shared_ptr<WebRTCConfig> webRTCConfig = std::make_shared<WebRTCConfig>();
     std::unique_ptr<WsClient> wsClient;
+    GSourcePtr reconnectTimeout;
 };
+
+std::unique_ptr<WebRTCPeer>
+WebRTSPClient::ActorContext::createPeer(const std::string& uri)
+{
+
+}
 
 WebRTSPClient::WebRTSPClient(
     const char* serverUrl,
@@ -96,13 +115,35 @@ WebRTSPClient::WebRTSPClient(
         _actorContext->wsClient = std::make_unique<WsClient>(
             config,
             _actorContext->mainLoop,
-            [] (
+            [actorContext = _actorContext.get()] (
                 const rtsp::Session::SendRequest& sendRequest,
                 const rtsp::Session::SendResponse& sendResponse) -> std::unique_ptr<rtsp::Session>
             {
-                return nullptr;
+                return std::make_unique<ClientSession>(
+                    actorContext->webRTCConfig,
+                    [actorContext] (const std::string& uri) -> std::unique_ptr<WebRTCPeer> {
+                        return actorContext->createPeer(uri);
+                    },
+                    sendRequest,
+                    sendResponse);
             },
-            [] (WsClient&) {
+            [this] (WsClient& client) {
+                if(_actorContext->reconnectTimeout)
+                    return;
+
+                const guint reconnectDelay = g_random_int_range(MIN_RECONNECT_DELAY, MAX_RECONNECT_DELAY);
+                GSourcePtr timeoutSourcePtr(g_timeout_source_new_seconds(reconnectDelay));
+                GSource* timeoutSource = timeoutSourcePtr.get();
+                g_source_set_callback(
+                    timeoutSource,
+                    [] (gpointer userData) -> gboolean {
+                        static_cast<WsClient*>(userData)->connect();
+                        return false;
+                    },
+                    &client,
+                    nullptr);
+                g_source_attach(timeoutSource, _actorContext->mainContext);
+                _actorContext->reconnectTimeout = std::move(timeoutSourcePtr);
             }
         );
     });

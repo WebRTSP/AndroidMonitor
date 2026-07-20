@@ -40,6 +40,8 @@ set(SOURCES
     GStreamerHelpers.cpp
     GStreamerPlayer.cpp
     WebRTSPClient.cpp
+    ClientSession.h
+    ClientSession.cpp
     main.cpp
 )
 
