@@ -231,7 +231,10 @@ void ONVIFDiscoverer::discover() noexcept {
 
 extern "C"
 JNIEXPORT jlong JNICALL
-Java_org_webrtsp_monitor_onvif_ONVIFDiscoverer_jniOpen(JNIEnv *env, jobject thiz) {
+Java_org_webrtsp_monitor_onvif_ONVIFDiscoverer_jniOpen(
+    JNIEnv* env,
+    jobject thiz)
+{
     ONVIFDiscoverer* discoverer = new ONVIFDiscoverer(env, thiz);
 
     return reinterpret_cast<jlong>(discoverer);
@@ -240,7 +243,7 @@ Java_org_webrtsp_monitor_onvif_ONVIFDiscoverer_jniOpen(JNIEnv *env, jobject thiz
 extern "C"
 JNIEXPORT void JNICALL
 Java_org_webrtsp_monitor_onvif_ONVIFDiscoverer_jniClose(
-    JNIEnv *env,
+    JNIEnv* env,
     jobject /*thiz*/,
     jlong handle)
 {
