@@ -64,11 +64,6 @@ struct ReStreamer::ActorContext : public Actor::Context
     }
 
     void deactivate() noexcept override {
-        if(reconnectTimeout) {
-            g_source_destroy(reconnectTimeout.get());
-            reconnectTimeout.reset();
-        }
-
         javaVm->DetachCurrentThread();
     }
 
@@ -87,7 +82,7 @@ struct ReStreamer::ActorContext : public Actor::Context
 std::unique_ptr<WebRTCPeer>
 ReStreamer::ActorContext::createPeer(const std::string& uri)
 {
-
+    return nullptr;
 }
 
 ReStreamer::ReStreamer(
@@ -146,11 +141,24 @@ ReStreamer::ReStreamer(
                 _actorContext->reconnectTimeout = std::move(timeoutSourcePtr);
             }
         );
+
+        if(_actorContext->wsClient->init())
+            _actorContext->wsClient->connect();
     });
 }
 
 ReStreamer::~ReStreamer() noexcept
 {
+    _actor->sendAction([this] () {
+        if(_actorContext->reconnectTimeout) {
+            g_source_destroy(_actorContext->reconnectTimeout.get());
+            _actorContext->reconnectTimeout.reset();
+        }
+
+        if(_actorContext->wsClient) {
+            _actorContext->wsClient.reset();
+        }
+    });
 }
 
 extern "C"

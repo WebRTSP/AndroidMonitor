@@ -66,7 +66,7 @@ class ReStreamer(
     }
 
     // may be called from worker thread
-    private fun onRegistered(agendId: String, accessToken: String?) {
+    private fun onRegisteredJni(agendId: String, accessToken: String?) {
         Log.d(TAG, "Registered. agentId: $agendId")
     }
 
