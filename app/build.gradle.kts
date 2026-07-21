@@ -77,6 +77,7 @@ dependencies {
     implementation(libs.androidx.material3)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
+    implementation(libs.sqids.kotlin)
     ksp(libs.androidx.room.compiler)
     implementation(libs.google.android.material)
     implementation(libs.hilt.android)

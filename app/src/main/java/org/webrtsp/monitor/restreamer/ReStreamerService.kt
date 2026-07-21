@@ -13,13 +13,31 @@ import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import org.sqids.Sqids
 import org.webrtsp.monitor.MainActivity
 import org.webrtsp.monitor.R
 import org.webrtsp.monitor.SettingsRepository
+import org.webrtsp.monitor.SourceEntity
 import javax.inject.Inject
+
+private val sqids = Sqids(
+    "0123456789abcdefghjkmnpqrstvwxyz", // Crockford's Base32 alphabet
+    minLength = 5,
+)
+
+private fun SourceEntity.toReStreamSource(): ReStreamSource {
+    return ReStreamSource(
+        sqids.encode(listOf(id!!)),
+        url,
+        userName,
+        password,
+        name,
+    )
+}
 
 @AndroidEntryPoint
 class ReStreamerService: LifecycleService() {
@@ -80,6 +98,8 @@ class ReStreamerService: LifecycleService() {
     lateinit var settingsRepository: SettingsRepository
     private var _trackSourcesJob: Job? = null
 
+    private var _reStreamer: ReStreamer? = null
+
     override fun onCreate() {
         super.onCreate()
 
@@ -89,20 +109,42 @@ class ReStreamerService: LifecycleService() {
     private fun startReStream() {
         if(_trackSourcesJob == null) {
             _trackSourcesJob = lifecycleScope.launch {
-                settingsRepository.allSourcesFlow.collect { sources ->
+                settingsRepository.allSourcesFlow
+                .combine(settingsRepository.reStreamerSettingsFlow) { sources, reStreamerSettings ->
+                    val webRtspClient = _reStreamer
+                    sources to (webRtspClient ?:
+                        with(reStreamerSettings) {
+                            ReStreamer(
+                                serverUrl,
+                                clientId,
+                                agentId,
+                                accessToken,
+                            )
+                        }.also { webRtspClient ->
+                            _reStreamer = webRtspClient
+                        })
+                }
+                .collect { (sources, reStreamer) ->
+                    reStreamer.updateSources(
+                        sources.map { it.toReStreamSource() })
                 }
             }
         }
     }
-    private fun stopReStream(startId: Int) {
+    private fun stopReStream(startId: Int? = null) {
         _trackSourcesJob?.cancel()
         _trackSourcesJob = null
-        stopSelf(startId)
-    }
-    private fun stopReStream() {
-        _trackSourcesJob?.cancel()
-        _trackSourcesJob = null
-        stopSelf()
+
+        _reStreamer?.apply {
+            _reStreamer = null
+            close()
+        }
+
+        if(startId != null) {
+            stopSelf(startId)
+        } else {
+            stopSelf()
+        }
     }
 
     private fun createNotificationChannel() {

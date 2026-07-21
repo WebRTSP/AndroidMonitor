@@ -18,7 +18,7 @@ enum
 
 }
 
-class WebRTSPClient: public JVMBridge {
+class ReStreamer: public JVMBridge {
 public:
     enum class State {
         Disconnected = 0,
@@ -27,14 +27,14 @@ public:
         Error = 3,
     };
 
-    WebRTSPClient(
+    ReStreamer(
         const char* serverUrl,
         const char* clientId,
         const char* agentId, // optional on first connect
         const char* accessToken, // optional on first connect
         JNIEnv*,
         jobject oppositeBank) noexcept;
-    ~WebRTSPClient() noexcept;
+    ~ReStreamer() noexcept;
 
 private:
     struct ActorContext;
@@ -52,7 +52,7 @@ private:
     std::shared_ptr<Actor> _actor;
 };
 
-struct WebRTSPClient::ActorContext : public Actor::Context
+struct ReStreamer::ActorContext : public Actor::Context
 {
     ActorContext(JavaVM *const javaVm) noexcept : javaVm(javaVm) {}
 
@@ -85,12 +85,12 @@ struct WebRTSPClient::ActorContext : public Actor::Context
 };
 
 std::unique_ptr<WebRTCPeer>
-WebRTSPClient::ActorContext::createPeer(const std::string& uri)
+ReStreamer::ActorContext::createPeer(const std::string& uri)
 {
 
 }
 
-WebRTSPClient::WebRTSPClient(
+ReStreamer::ReStreamer(
     const char* serverUrl,
     const char* clientId,
     const char* agentId, // optional on first connect
@@ -149,13 +149,13 @@ WebRTSPClient::WebRTSPClient(
     });
 }
 
-WebRTSPClient::~WebRTSPClient() noexcept
+ReStreamer::~ReStreamer() noexcept
 {
 }
 
 extern "C"
 JNIEXPORT jlong JNICALL
-Java_org_webrtsp_monitor_restreamer_WebRTSPClient_jniOpen(
+Java_org_webrtsp_monitor_restreamer_ReStreamer_jniOpen(
     JNIEnv* env,
     jobject thiz,
     jstring jServerUrl,
@@ -171,7 +171,7 @@ Java_org_webrtsp_monitor_restreamer_WebRTSPClient_jniOpen(
     const char* agentId = jAgentId ? env->GetStringUTFChars(jAgentId, nullptr) : nullptr;
     const char* accessToken = jAccessToken ? env->GetStringUTFChars(jAccessToken, nullptr) : nullptr;
 
-    WebRTSPClient *const client = new WebRTSPClient(
+    ReStreamer *const client = new ReStreamer(
         serverUrl,
         clientId,
         agentId,
@@ -193,10 +193,21 @@ Java_org_webrtsp_monitor_restreamer_WebRTSPClient_jniOpen(
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_org_webrtsp_monitor_restreamer_WebRTSPClient_jniClose(
+Java_org_webrtsp_monitor_restreamer_ReStreamer_jniClose(
     JNIEnv* env,
     jobject /*thiz*/,
     jlong handle)
 {
-    delete reinterpret_cast<WebRTSPClient*>(handle);
+    delete reinterpret_cast<ReStreamer*>(handle);
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_org_webrtsp_monitor_restreamer_ReStreamer_jniUpdateSources(
+    JNIEnv *env,
+    jobject /*thiz*/,
+    jlong native_handle,
+    jobjectArray sources)
+{
+    ReStreamer* client = reinterpret_cast<ReStreamer*>(client);
 }

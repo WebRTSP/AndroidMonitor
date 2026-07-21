@@ -1,13 +1,17 @@
 package org.webrtsp.monitor
 
+import android.net.Uri
+import androidx.core.net.toUri
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.time.Duration
@@ -35,10 +39,18 @@ data class Settings(
     val reStreamerEnabled: Boolean,
 )
 
+data class ReStreamerSettings(
+    val serverUrl: Uri,
+    val clientId: String,
+    val agentId: String?,
+    val accessToken: String?,
+)
+
 @Singleton
 class SettingsRepository @Inject constructor(
-    private val _dataStore: DataStore<Preferences>,
+    @param:SettingsDataStore private val _dataStore: DataStore<Preferences>,
     private val _sourcesDao: SourcesDao,
+    @param:ReStreamerSettingsDataStore private val _reStreamerDataStore: DataStore<Preferences>,
 ) {
     private object Keys {
         val ACTIVE_SOURCE_ID = longPreferencesKey("active_source_id")
@@ -47,12 +59,17 @@ class SettingsRepository @Inject constructor(
         val MOTION_PREVIEW_DURATION = intPreferencesKey("motion_preview_duration")
         val FULL_SCREEN_INTENT_PERMISSION_REQUESTED = booleanPreferencesKey("full_screen_intent_permission_requested")
         val RE_STREAMER_ENABLED = booleanPreferencesKey("re_streamer_enabled")
+        val WEBRTSP_SERVER_URL = stringPreferencesKey("webrtsp_server_url")
+        val WEBRTSP_CLIENT_ID = stringPreferencesKey("webrtsp_client_id")
+        val WEBRTSP_AGENT_ID = stringPreferencesKey("webrtsp_agent_id")
+        val WEBRTSP_ACCESS_TOKEN = stringPreferencesKey("webrtsp_access_token")
     }
     private object Defaults {
         const val TRACK_MOTION = true
         const val KEEP_SCREEN_ON = false
         val MOTION_PREVIEW_DURATION = 10.seconds
         const val RE_STREAMER_ENABLED = false
+        const val WEBRTSP_SERVER_URL = "webrtsps://ipcam.stream/"
     }
 
     val allSourcesFlow = _sourcesDao.all()
@@ -65,8 +82,7 @@ class SettingsRepository @Inject constructor(
             if(activeSourceId == null)
                 null
             else
-                _sourcesDao.findById(activeSourceId)?.toSource()
-        }
+                _sourcesDao.findById(activeSourceId)?.toSource() }
 
     val settingsFlow: Flow<Settings> = _dataStore.data
         .map { preferences ->
@@ -87,9 +103,28 @@ class SettingsRepository @Inject constructor(
                 preferences[Keys.FULL_SCREEN_INTENT_PERMISSION_REQUESTED]
                     ?: false,
                 preferences[Keys.RE_STREAMER_ENABLED]
-                    ?: Defaults.RE_STREAMER_ENABLED
+                    ?: Defaults.RE_STREAMER_ENABLED,
             )
         }
+
+    val reStreamerSettingsFlow: Flow<ReStreamerSettings> = _reStreamerDataStore.data
+        .map { preferences ->
+            val clientId = preferences[Keys.WEBRTSP_CLIENT_ID].let { clientId ->
+                clientId ?: UUID.randomUUID().toString().also { newClientId ->
+                    _reStreamerDataStore.edit { preferences ->
+                        preferences[Keys.WEBRTSP_CLIENT_ID] = newClientId
+                    }
+                }
+            }
+
+            ReStreamerSettings(
+                (preferences[Keys.WEBRTSP_SERVER_URL]
+                    ?: Defaults.WEBRTSP_SERVER_URL).toUri(),
+                clientId,
+                preferences[Keys.WEBRTSP_AGENT_ID],
+                preferences[Keys.WEBRTSP_ACCESS_TOKEN])
+        }
+
     val keepScreenOnFlow: Flow<Boolean> = settingsFlow
         .map { settings -> settings.keepScreenOn }
     val motionPreviewDurationFlow: Flow<Duration> = settingsFlow
