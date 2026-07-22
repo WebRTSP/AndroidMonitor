@@ -4,6 +4,11 @@ import android.net.Uri
 import android.util.Log
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import java.nio.ByteBuffer
+import java.security.KeyStore
+import javax.net.ssl.TrustManagerFactory
+import javax.net.ssl.X509TrustManager
+import kotlin.io.encoding.Base64
 
 data class ReStreamSource(
     val id: String,
@@ -34,6 +39,7 @@ class ReStreamer(
     }
 
     private var _nativeHandle: Long? = jniOpen(
+        getTrustedCAs(),
         serverUrl.toString(),
         clientId,
         agentId,
@@ -49,6 +55,7 @@ class ReStreamer(
     val state = _state.asStateFlow()
 
     private external fun jniOpen(
+        trustedCAs: ByteBuffer,
         serverUrl: String,
         clientId: String,
         agentId: String?,
@@ -68,6 +75,32 @@ class ReStreamer(
     // may be called from worker thread
     private fun onRegisteredJni(agendId: String, accessToken: String?) {
         Log.d(TAG, "Registered. agentId: $agendId")
+    }
+
+    private fun getTrustedCAs() : ByteBuffer {
+        val trustManagerFactory = TrustManagerFactory.getInstance(
+            TrustManagerFactory.getDefaultAlgorithm()
+        ).apply {
+            init(null as KeyStore?)
+        }
+
+        val trustManager = trustManagerFactory.trustManagers
+            .filterIsInstance<X509TrustManager>()
+            .firstOrNull() ?: return ByteBuffer.allocateDirect(0)
+
+        val s = trustManager.acceptedIssuers.size
+        return buildString {
+            trustManager.acceptedIssuers.forEach {
+                append("-----BEGIN CERTIFICATE-----\n")
+                append(Base64.encode(it.encoded))
+                append("\n-----END CERTIFICATE-----\n")
+            }
+        }.let {
+            ByteBuffer.allocateDirect(it.length).apply {
+                put(it.toByteArray(Charsets.US_ASCII))
+                flip()
+            }
+        }
     }
 
     override fun close() {

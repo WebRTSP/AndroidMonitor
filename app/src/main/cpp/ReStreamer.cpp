@@ -1,5 +1,7 @@
 #include <jni.h>
 
+#include <string_view>
+
 #include "CxxPtr/GlibPtr.h"
 #include "Helpers/Actor.h"
 #include "WebRTSP/Signalling/WsClient.h"
@@ -28,6 +30,7 @@ public:
     };
 
     ReStreamer(
+        const std::string_view& trustedCAs,
         const char* serverUrl,
         const char* clientId,
         const char* agentId, // optional on first connect
@@ -86,6 +89,7 @@ ReStreamer::ActorContext::createPeer(const std::string& uri)
 }
 
 ReStreamer::ReStreamer(
+    const std::string_view& trustedCAs,
     const char* serverUrl,
     const char* clientId,
     const char* agentId, // optional on first connect
@@ -102,12 +106,13 @@ ReStreamer::ReStreamer(
     _actorContext(std::make_shared<ActorContext>(javaVm())),
     _actor(std::make_shared<Actor>(_actorContext))
 {
-    _actor->sendAction([this] () {
+    _actor->sendAction([this, trustedCAs = std::string(trustedCAs)] () mutable {
         WsClientConfig config {};
         if(!FillConfigFromUrl(_serverUrl, &config))
             return;
 
         _actorContext->wsClient = std::make_unique<WsClient>(
+            std::move(trustedCAs),
             config,
             _actorContext->mainLoop,
             [actorContext = _actorContext.get()] (
@@ -166,12 +171,15 @@ JNIEXPORT jlong JNICALL
 Java_org_webrtsp_monitor_restreamer_ReStreamer_jniOpen(
     JNIEnv* env,
     jobject thiz,
+    jobject jTrustedCAs,
     jstring jServerUrl,
     jstring jClientId,
     jstring jAgentId,
     jstring jAccessToken)
 {
-    if(!jServerUrl)
+    const char* trustedCAs = static_cast<char*>(env->GetDirectBufferAddress(jTrustedCAs));
+    jlong trustedCAsSize = env->GetDirectBufferCapacity(jTrustedCAs);
+    if(!trustedCAs || !jServerUrl || !trustedCAsSize)
         return {};
 
     const char* serverUrl = env->GetStringUTFChars(jServerUrl, nullptr);
@@ -180,6 +188,7 @@ Java_org_webrtsp_monitor_restreamer_ReStreamer_jniOpen(
     const char* accessToken = jAccessToken ? env->GetStringUTFChars(jAccessToken, nullptr) : nullptr;
 
     ReStreamer *const client = new ReStreamer(
+        std::string_view(trustedCAs, trustedCAsSize),
         serverUrl,
         clientId,
         agentId,
