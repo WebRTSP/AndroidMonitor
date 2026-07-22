@@ -43,11 +43,6 @@ private:
     struct ActorContext;
 
 private:
-    const std::string _serverUrl;
-    const std::string _clientId;
-    const std::string _agentId;
-    const std::string _accessToken;
-
     const jmethodID _onStateChangedJni;
     const jmethodID _onRegisteredJni;
 
@@ -57,7 +52,21 @@ private:
 
 struct ReStreamer::ActorContext : public Actor::Context
 {
-    ActorContext(JavaVM *const javaVm) noexcept : javaVm(javaVm) {}
+    ActorContext(
+        JavaVM *const javaVm,
+        std::string&& serverUrl,
+        std::string&& clientId,
+        std::string&& agentId,
+        std::string&& accessToken
+    ) noexcept :
+        javaVm(javaVm),
+        serverUrl(std::move(serverUrl)),
+        sessionContext {
+            .clientId = std::move(clientId),
+            .agentId = std::move(agentId),
+            .accessToken = std::move(accessToken)
+        }
+    {}
 
     void activate(GMainContext* mainContext, GMainLoop* mainLoop) noexcept override {
         this->mainContext = mainContext;
@@ -73,6 +82,10 @@ struct ReStreamer::ActorContext : public Actor::Context
     std::unique_ptr<WebRTCPeer> createPeer(const std::string& uri);
 
     JavaVM *const javaVm;
+    const std::string serverUrl;
+
+    ClientSession::Context sessionContext;
+
     GMainContext* mainContext = nullptr;
     GMainLoop* mainLoop = nullptr;
     JNIEnv* actorJniEnv = nullptr;
@@ -96,39 +109,45 @@ ReStreamer::ReStreamer(
     const char* accessToken, // optional on first connect
     JNIEnv* env,
     jobject oppositeBank) noexcept:
-    _serverUrl(serverUrl),
-    _clientId(clientId),
-    _agentId(agentId ? agentId : ""),
-    _accessToken(accessToken ? accessToken : ""),
     JVMBridge(env, oppositeBank),
     _onStateChangedJni(getMethodID("onStateChangedJni", "(I)V")),
     _onRegisteredJni(getMethodID( "onRegisteredJni", "(Ljava/lang/String;Ljava/lang/String;)V")),
-    _actorContext(std::make_shared<ActorContext>(javaVm())),
+    _actorContext(
+        std::make_shared<ActorContext>(
+            javaVm(),
+            serverUrl,
+            clientId,
+            agentId ? agentId : "",
+            accessToken ? accessToken : "")),
     _actor(std::make_shared<Actor>(_actorContext))
 {
-    _actor->sendAction([this, trustedCAs = std::string(trustedCAs)] () mutable {
+    _actor->sendAction([
+        trustedCAs = std::string(trustedCAs),
+        actorContext = _actorContext.get()
+    ] () mutable {
         WsClientConfig config {};
-        if(!FillConfigFromUrl(_serverUrl, &config))
+        if(!FillConfigFromUrl(actorContext->serverUrl, &config))
             return;
 
-        _actorContext->wsClient = std::make_unique<WsClient>(
+        actorContext->wsClient = std::make_unique<WsClient>(
             std::move(trustedCAs),
             config,
-            _actorContext->mainLoop,
-            [actorContext = _actorContext.get()] (
+            actorContext->mainLoop,
+            [actorContext] (
                 const rtsp::Session::SendRequest& sendRequest,
                 const rtsp::Session::SendResponse& sendResponse) -> std::unique_ptr<rtsp::Session>
             {
                 return std::make_unique<ClientSession>(
                     actorContext->webRTCConfig,
+                    &actorContext->sessionContext,
                     [actorContext] (const std::string& uri) -> std::unique_ptr<WebRTCPeer> {
                         return actorContext->createPeer(uri);
                     },
                     sendRequest,
                     sendResponse);
             },
-            [this] (WsClient& client) {
-                if(_actorContext->reconnectTimeout)
+            [actorContext] (WsClient& /*client*/) {
+                if(actorContext->reconnectTimeout)
                     return;
 
                 const guint reconnectDelay = g_random_int_range(MIN_RECONNECT_DELAY, MAX_RECONNECT_DELAY);
@@ -137,18 +156,24 @@ ReStreamer::ReStreamer(
                 g_source_set_callback(
                     timeoutSource,
                     [] (gpointer userData) -> gboolean {
-                        static_cast<WsClient*>(userData)->connect();
+                        ActorContext* actorContext =  static_cast<ActorContext*>(userData);
+
+                        g_source_destroy(actorContext->reconnectTimeout.get());
+                        actorContext->reconnectTimeout.reset();
+
+                        actorContext->wsClient->connect();
+
                         return false;
                     },
-                    &client,
+                    actorContext,
                     nullptr);
-                g_source_attach(timeoutSource, _actorContext->mainContext);
-                _actorContext->reconnectTimeout = std::move(timeoutSourcePtr);
+                g_source_attach(timeoutSource, actorContext->mainContext);
+                actorContext->reconnectTimeout = std::move(timeoutSourcePtr);
             }
         );
 
-        if(_actorContext->wsClient->init())
-            _actorContext->wsClient->connect();
+        if(actorContext->wsClient->init())
+            actorContext->wsClient->connect();
     });
 }
 

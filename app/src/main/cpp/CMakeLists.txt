@@ -5,6 +5,9 @@ project(Monitor.native)
 set(HTTP_SUPPORT OFF CACHE BOOL "HTTP server is not used" FORCE)
 set(SIGNALLING_SUPPORT ON CACHE BOOL "libwebsocket based client is used" FORCE)
 set(ONVIF_SUPPORT ON CACHE BOOL "ONVIF used" FORCE)
+
+set(CMAKE_CXX_STANDARD 20)
+
 add_subdirectory(WebRTSP)
 
 find_package(PkgConfig REQUIRED)
