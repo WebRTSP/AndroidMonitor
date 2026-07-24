@@ -43,8 +43,8 @@ set(SOURCES
     GStreamerHelpers.cpp
     GStreamerPlayer.cpp
     ReStreamer.cpp
-    ClientSession.h
-    ClientSession.cpp
+    AgentSession.h
+    AgentSession.cpp
     main.cpp
 )
 

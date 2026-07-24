@@ -7,7 +7,7 @@
 #include "WebRTSP/Signalling/WsClient.h"
 
 #include "JVMBridge.h"
-#include "ClientSession.h"
+#include "AgentSession.h"
 
 
 namespace {
@@ -84,7 +84,7 @@ struct ReStreamer::ActorContext : public Actor::Context
     JavaVM *const javaVm;
     const std::string serverUrl;
 
-    ClientSession::Context sessionContext;
+    AgentSession::Context sessionContext;
 
     GMainContext* mainContext = nullptr;
     GMainLoop* mainLoop = nullptr;
@@ -137,9 +137,9 @@ ReStreamer::ReStreamer(
                 const rtsp::Session::SendRequest& sendRequest,
                 const rtsp::Session::SendResponse& sendResponse) -> std::unique_ptr<rtsp::Session>
             {
-                return std::make_unique<ClientSession>(
-                    actorContext->webRTCConfig,
+                return std::make_unique<AgentSession>(
                     &actorContext->sessionContext,
+                    actorContext->webRTCConfig,
                     [actorContext] (const std::string& uri) -> std::unique_ptr<WebRTCPeer> {
                         return actorContext->createPeer(uri);
                     },
@@ -161,7 +161,10 @@ ReStreamer::ReStreamer(
                         g_source_destroy(actorContext->reconnectTimeout.get());
                         actorContext->reconnectTimeout.reset();
 
-                        actorContext->wsClient->connect();
+                        actorContext->wsClient->connect(
+                            actorContext->sessionContext.clientId,
+                            actorContext->sessionContext.agentId,
+                            actorContext->sessionContext.accessToken);
 
                         return false;
                     },
@@ -172,8 +175,12 @@ ReStreamer::ReStreamer(
             }
         );
 
-        if(actorContext->wsClient->init())
-            actorContext->wsClient->connect();
+        if(actorContext->wsClient->init()) {
+            actorContext->wsClient->connect(
+                actorContext->sessionContext.clientId,
+                actorContext->sessionContext.agentId,
+                actorContext->sessionContext.accessToken);
+        }
     });
 }
 

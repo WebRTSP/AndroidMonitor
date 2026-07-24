@@ -3,7 +3,7 @@
 #include "WebRTSP/RtspSession/ServerSession.h"
 
 
-class ClientSession : public rtsp::ServerSession
+class AgentSession : public rtsp::ServerSession
 {
 public:
     struct Context {
@@ -12,22 +12,18 @@ public:
         std::string accessToken;
     };
 
-    ClientSession(
+    AgentSession(
+        Context*,
         const WebRTCConfigPtr&,
-        Context* context,
         const CreatePeer&,
         const SendRequest&,
         const SendResponse&) noexcept;
 
-    bool onConnected() noexcept override;
-
-protected:
-    bool onSetParameterResponse(
-        const rtsp::Request& request,
-        const rtsp::Response& response) noexcept override;
+    bool onConnected(
+        std::string&& /*clientId*/,
+        std::string&& /*agentId*/,
+        std::string&& /*accessToken*/) noexcept override;
 
 private:
     Context *const _context;
-
-    rtsp::CSeq _registerCSeq = rtsp::InvalidCSeq;
 };
