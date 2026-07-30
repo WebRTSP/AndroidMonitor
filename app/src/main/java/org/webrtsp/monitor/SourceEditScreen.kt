@@ -486,7 +486,7 @@ fun SourceEditScreen(
                     currentWindowAdaptiveInfo()
                         .windowSizeClass
                             .isWidthAtLeastBreakpoint(
-                                WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND)
+                                WindowSizeClass.WIDTH_DP_EXPANDED_LOWER_BOUND)
                 ) {
                     LazyRow(
                         modifier = Modifier
