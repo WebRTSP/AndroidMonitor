@@ -12,6 +12,7 @@
     <string name="keep_screen_on_label">Блокировать выключение экрана</string>
     <string name="onvif_events_checker_notification_channel_name">Отслеживание движений</string>
     <string name="onvif_events_checker_notification_title">Отслеживание движений</string>
+    <string name="onvif_events_checker_notification_suspended_title">Отслеживание движений приостановлено</string>
     <string name="motion_events_channel_name">Оповещения о событиях движения</string>
     <string name="motion_detected_notification_text">Обнаружено движение!</string>
     <string name="stop_motion_tracking_notification_action">Остановить</string>

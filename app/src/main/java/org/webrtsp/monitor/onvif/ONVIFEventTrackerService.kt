@@ -1,5 +1,7 @@
 package org.webrtsp.monitor.onvif
 
+import android.annotation.SuppressLint
+import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -31,6 +33,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.webrtsp.monitor.MainActivity
 import org.webrtsp.monitor.MotionEventRepository
+import org.webrtsp.monitor.PowerStateRepository
 import org.webrtsp.monitor.R
 import org.webrtsp.monitor.Source
 import org.webrtsp.monitor.SourceId
@@ -113,11 +116,13 @@ class ONVIFEventTrackerService: LifecycleService() {
 
     @Inject
     lateinit var eventTrackingRepository: MotionEventRepository
+    @Inject
+    lateinit var powerStateRepository: PowerStateRepository
 
     private val _notificationManager by lazy {  NotificationManagerCompat.from(applicationContext) }
 
     private var _trackJob: Job? = null
-    private val _eventSourceFlow = MutableStateFlow<EventSource?>(null)
+    private val _eventSource = MutableStateFlow<EventSource?>(null)
 
     override fun onCreate() {
         super.onCreate()
@@ -125,65 +130,78 @@ class ONVIFEventTrackerService: LifecycleService() {
         createNotificationChannel()
     }
 
+    @SuppressLint("MissingPermission")
+    private fun updateNotification(eventSource: EventSource?, tracking: Boolean) {
+        val notification = buildNotification(eventSource, tracking)
+
+        _notificationManager.notify(NOTIFICATION_ID, notification)
+    }
+
     @OptIn(ExperimentalCoroutinesApi::class)
     private fun startTracking(eventSource: EventSource) {
         if(_trackJob == null) {
             _trackJob = lifecycleScope.launch {
                 combine(
+                    _eventSource,
                     ProcessLifecycleOwner.get().lifecycle.eventFlow,
-                    _eventSourceFlow
-                ) { processState, eventSource ->
-                    when(processState) {
-                        Lifecycle.Event.ON_CREATE,
-                        Lifecycle.Event.ON_START,
-                        Lifecycle.Event.ON_RESUME -> null
+                    powerStateRepository.isPowerSufficient,
+                ) { eventSource, processState, isPowerSufficient ->
+                    val isBackgrounded = when(processState) {
                         Lifecycle.Event.ON_PAUSE,
-                        Lifecycle.Event.ON_STOP -> eventSource
-                        Lifecycle.Event.ON_DESTROY,
-                        Lifecycle.Event.ON_ANY -> null
+                        Lifecycle.Event.ON_STOP -> true
+                        else -> false
                     }
+
+                    Triple(eventSource, isBackgrounded, isPowerSufficient)
                 }
-                .collectLatest { eventSource ->
-                    eventSource?.apply {
-                        ONVIFEventsChecker(
-                            endpoint,
-                            userName,
-                            password
-                        ).use { checker ->
-                            checker.motionDetectedFlow
-                                .onEach {
-                                    eventTrackingRepository.emitMotionDetected(endpoint.toOrigin())
+                .collectLatest { (eventSource, isBackgrounded, isPowerSufficient) ->
+                    if(eventSource != null && isBackgrounded && isPowerSufficient) {
+                        updateNotification(eventSource, true)
+                        with(eventSource) {
+                            ONVIFEventsChecker(
+                                endpoint,
+                                userName,
+                                password
+                            ).use { checker ->
+                                checker.motionDetectedFlow
+                                    .onEach {
+                                        eventTrackingRepository.emitMotionDetected(endpoint.toOrigin())
+                                    }
+                                    .launchIn(this@launch)
+
+                                while(true) {
+                                    val state = checker.state.first { state ->
+                                        state == ONVIFEventsChecker.State.Idle ||
+                                        state == ONVIFEventsChecker.State.Error
+                                    }
+                                    if(state == ONVIFEventsChecker.State.Error) {
+                                        delay(5.seconds)
+                                    } else {
+                                        delay(1.seconds)
+                                    }
+                                    checker.checkEvents()
                                 }
-                                .launchIn(this@launch)
-                            while(true) {
-                                val state = checker.state.first { state ->
-                                    state == ONVIFEventsChecker.State.Idle ||
-                                    state == ONVIFEventsChecker.State.Error
-                                }
-                                if(state == ONVIFEventsChecker.State.Error) {
-                                    delay(5.seconds)
-                                } else {
-                                    delay(1.seconds)
-                                }
-                                checker.checkEvents()
                             }
                         }
+                    } else {
+                        updateNotification(eventSource, isPowerSufficient)
                     }
                 }
             }
         }
 
-        _eventSourceFlow.value = eventSource
+        _eventSource.value = eventSource
     }
-    private fun stopTracking(startId: Int) {
+    private fun stopTracking(startId: Int? = null) {
         _trackJob?.cancel()
         _trackJob = null
-        stopSelf(startId)
-    }
-    private fun stopTracking() {
-        _trackJob?.cancel()
-        _trackJob = null
-        stopSelf()
+
+        _eventSource.value = null
+
+        if(startId != null)
+            stopSelf(startId)
+        else
+            stopSelf()
     }
 
     private fun createNotificationChannel() {
@@ -200,11 +218,20 @@ class ONVIFEventTrackerService: LifecycleService() {
         _notificationManager.createNotificationChannel(channel)
     }
 
-    private fun startForeground(eventSource: EventSource?) {
-        val notification = NotificationCompat.Builder(applicationContext, NOTIFICATION_CHANEL_ID)
+    private fun buildNotification(eventSource: EventSource?, tracking: Boolean): Notification {
+        return NotificationCompat.Builder(applicationContext, NOTIFICATION_CHANEL_ID)
             .setSmallIcon(R.drawable.videocam)
             .setContentTitle(getString(R.string.onvif_events_checker_notification_title))
             .apply {
+                setContentTitle(
+                    getString(
+                        if(eventSource != null && tracking)
+                            R.string.onvif_events_checker_notification_title
+                        else
+                            R.string.onvif_events_checker_notification_suspended_title
+                    )
+                )
+
                 if(eventSource != null)
                     setContentText(eventSource.endpoint.toOrigin())
             }
@@ -242,8 +269,12 @@ class ONVIFEventTrackerService: LifecycleService() {
                     pendingIntent)
             }
             .build()
+    }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+    private fun startForeground(eventSource: EventSource?) {
+        val notification = buildNotification(eventSource, true)
+
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             startForeground(
                 NOTIFICATION_ID,
                 notification,

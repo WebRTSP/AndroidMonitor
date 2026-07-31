@@ -11,7 +11,6 @@ import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.lifecycle.flowWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import dagger.hilt.android.HiltAndroidApp
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import org.webrtsp.monitor.onvif.ONVIFEventTrackerService
 import javax.inject.Inject
@@ -21,8 +20,6 @@ import javax.inject.Inject
 class Application : android.app.Application() {
     @Inject
     lateinit var permissionsRepository: PermissionsRepository
-    @Inject
-    lateinit var powerStateRepository: PowerStateRepository
     @Inject
     lateinit var settingsRepository: SettingsRepository
     @Inject
@@ -58,13 +55,9 @@ class Application : android.app.Application() {
         scope.launch {
             settingsRepository.settingsFlow
                 .flowWithLifecycle(lifecycle, Lifecycle.State.STARTED)
-                .combine(powerStateRepository.isOnPower) { settings, isOnPower ->
-                    settings to isOnPower
-                }
-                .collect { (settings, isOnPower) ->
+                .collect { settings ->
                     val activeSource = settings.activeSource
                     if(
-                        isOnPower &&
                         settings.trackMotion &&
                         activeSource != null &&
                         (activeSource.onvif || activeSource.maybeOnvif)

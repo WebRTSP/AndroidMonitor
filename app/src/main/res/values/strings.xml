@@ -15,6 +15,7 @@
 
     <string name="onvif_events_checker_notification_channel_name">Motion tracking</string>
     <string name="onvif_events_checker_notification_title">Tracking motion events</string>
+    <string name="onvif_events_checker_notification_suspended_title">Tracking motion events suspended</string>
     <string name="stop_motion_tracking_notification_action">Stop motion tracking</string>
 
     <string name="motion_events_channel_name">Motion notifications</string>
