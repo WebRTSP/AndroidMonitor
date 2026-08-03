@@ -107,7 +107,7 @@ class ONVIFEventTrackerService: LifecycleService() {
                 if(_started) {
                     _started = false
 
-                    applicationContext.startForegroundService(
+                    applicationContext.startService(
                         stopIntent(applicationContext))
                 }
             }
