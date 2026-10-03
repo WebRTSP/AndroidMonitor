@@ -1,6 +1,7 @@
 package org.webrtsp.monitor
 
 import android.Manifest
+import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
@@ -80,6 +81,14 @@ class MainActivity : ComponentActivity() {
                                 }
                                 entry<Screen.SourceEdit> { key ->
                                     SourceEditScreen(
+                                        onShare = { textToShare ->
+                                            val sendIntent = Intent().apply {
+                                                action = Intent.ACTION_SEND
+                                                putExtra(Intent.EXTRA_TEXT, textToShare)
+                                                type = "text/plain"
+                                            }
+                                            startActivity(Intent.createChooser(sendIntent, null))
+                                        },
                                         onComplete = { activeSource ->
                                             backStack.clear()
                                             backStack.add(if(activeSource == null)

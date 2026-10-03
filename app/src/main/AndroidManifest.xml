@@ -32,7 +32,12 @@
             android:name=".onvif.ONVIFEventTrackerService"
             android:enabled="true"
             android:exported="false"
-            android:foregroundServiceType="connectedDevice"/>
+            android:foregroundServiceType="connectedDevice" />
+        <service
+            android:name=".restreamer.ReStreamerService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="connectedDevice" />
         <activity
             android:name=".MotionViewActivity"
             android:exported="false"

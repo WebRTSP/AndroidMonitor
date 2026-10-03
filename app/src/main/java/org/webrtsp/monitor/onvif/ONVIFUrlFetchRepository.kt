@@ -22,10 +22,13 @@ class ONVIFUrlFetchRepository @Inject constructor(
         deviceUrl: Uri,
         userName: String?,
         password: String?,
+        ignoreCached: Boolean = false,
     ): Uri? = withContext(_dispatcher) {
-        _cacheGuard.withLock {
-            if(_deviceUrl == deviceUrl && _mediaUrl != null) {
-                return@withContext _mediaUrl
+        if(!ignoreCached) {
+            _cacheGuard.withLock {
+                if(_deviceUrl == deviceUrl && _mediaUrl != null) {
+                    return@withContext _mediaUrl
+                }
             }
         }
 
@@ -48,5 +51,13 @@ class ONVIFUrlFetchRepository @Inject constructor(
         }
 
         mediaUrl
+    }
+
+    suspend fun resetCachedMediaUrl(deviceUrl: Uri) {
+        _cacheGuard.withLock {
+            if(_deviceUrl == deviceUrl) {
+                _mediaUrl = null
+            }
+        }
     }
 }

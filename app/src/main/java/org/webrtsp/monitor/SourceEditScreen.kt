@@ -30,9 +30,9 @@ import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -40,6 +40,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SecureTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
+import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.runtime.Composable
@@ -47,6 +48,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -58,6 +60,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.window.core.layout.WindowSizeClass
+import kotlinx.coroutines.launch
 import org.webrtsp.monitor.ui.theme.spacing
 
 val SUPPORTED_PROTOCOLS = listOf("rtsp://", "http://")
@@ -298,9 +301,11 @@ fun SelectedSourceEditCard(
 
 @Composable
 fun SourceEditScreen(
+    onShare: (textToShare: String) -> Unit,
     onComplete: (activeSource: Source?) -> Unit,
     viewModel: SourceEditViewModel = hiltViewModel()
 ) {
+    val scope = rememberCoroutineScope()
     val configuration = LocalConfiguration.current
     val isLandscape by remember(configuration) {
         derivedStateOf {
@@ -312,6 +317,7 @@ fun SourceEditScreen(
     val activeSource by viewModel.activeSource.collectAsStateWithLifecycle()
     val selectedSource by viewModel.selectedSource.collectAsStateWithLifecycle()
     val sources by viewModel.sources.collectAsStateWithLifecycle()
+    val sharingEnabled by viewModel.sharingEnabled.collectAsStateWithLifecycle()
 
     val onSelect = remember {{ source: Source ->
         viewModel.selectSource(source)
@@ -402,10 +408,22 @@ fun SourceEditScreen(
         modifier = Modifier.fillMaxSize(),
         topBar = {
             @OptIn(ExperimentalMaterial3Api::class)
-            CenterAlignedTopAppBar(
+            TopAppBar(
+                navigationIcon = {
+                    IconButton(
+                        onClick = { onComplete(activeSource) },
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.arrow_back),
+                            contentDescription = null,
+                        )
+                    }
+                },
                 title = {
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.rowSpacing),
+                        horizontalArrangement = Arrangement.spacedBy(
+                            MaterialTheme.spacing.rowSpacing,
+                            Alignment.CenterHorizontally),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
@@ -420,17 +438,27 @@ fun SourceEditScreen(
                         }
                     }
                 },
-                navigationIcon = {
-                    IconButton(
-                        onClick = { onComplete(activeSource) },
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.arrow_back),
-                            contentDescription = null,
-                        )
-                    }
-                },
                 actions = {
+                    AnimatedVisibility(
+                        visible = sharingEnabled,
+                        enter = fadeIn() + expandHorizontally(),
+                        exit = fadeOut() + shrinkHorizontally(),
+                    ) {
+                        IconButton(
+                            onClick = {
+                                scope.launch {
+                                    val shareText = viewModel.buildSourcesShareText()
+                                    if(shareText.isNotEmpty())
+                                        onShare(shareText)
+                                }
+                            }
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.share),
+                                contentDescription = null,
+                            )
+                        }
+                    }
                     AnimatedVisibility(
                         visible = selectedSource != null &&
                             (selectedSource.userDefined ||
@@ -449,7 +477,7 @@ fun SourceEditScreen(
                             )
                         }
                     }
-                    FilledIconButton(
+                    FilledTonalIconButton(
                         onClick = {
                             viewModel.updateSelected(activate = true)
                             onComplete(viewModel.selectedSource.value)

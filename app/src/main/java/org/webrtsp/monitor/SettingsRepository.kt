@@ -15,17 +15,6 @@ import kotlin.time.Duration.Companion.seconds
 import kotlin.time.DurationUnit
 
 
-fun Source.toEntity(): SourceEntity {
-    return SourceEntity(
-        id,
-        url.toString(),
-        origin,
-        userName,
-        password,
-        name,
-        urn)
-}
-
 data class Settings(
     val activeSource: Source?,
     val trackMotion: Boolean,
@@ -36,8 +25,9 @@ data class Settings(
 
 @Singleton
 class SettingsRepository @Inject constructor(
-    private val _dataStore: DataStore<Preferences>,
+    @param:SettingsDataStore private val _dataStore: DataStore<Preferences>,
     private val _sourcesDao: SourcesDao,
+    @param:ReStreamerSettingsDataStore private val _reStreamerDataStore: DataStore<Preferences>,
 ) {
     private object Keys {
         val ACTIVE_SOURCE_ID = longPreferencesKey("active_source_id")
@@ -79,14 +69,13 @@ class SettingsRepository @Inject constructor(
                     ?: Defaults.TRACK_MOTION,
                 preferences[Keys.KEEP_SCREEN_ON]
                     ?: Defaults.KEEP_SCREEN_ON,
-                preferences[Keys.MOTION_PREVIEW_DURATION] ?.seconds
+                preferences[Keys.MOTION_PREVIEW_DURATION]?.seconds
                     ?: Defaults.MOTION_PREVIEW_DURATION,
                 preferences[Keys.FULL_SCREEN_INTENT_PERMISSION_REQUESTED]
-                    ?: false
+                    ?: false,
             )
         }
-    val trackMotionFlow: Flow<Boolean> = settingsFlow
-        .map { settings -> settings.trackMotion }
+
     val keepScreenOnFlow: Flow<Boolean> = settingsFlow
         .map { settings -> settings.keepScreenOn }
     val motionPreviewDurationFlow: Flow<Duration> = settingsFlow
@@ -129,8 +118,12 @@ class SettingsRepository @Inject constructor(
 
     suspend fun addOrUpdate(source: Source): Long? {
         return try {
-            val databaseId = _sourcesDao.upsert(source.toEntity())
-            return if(databaseId == SourcesDao.UPDATED) source.id else databaseId
+            return if(source.id == null) {
+                _sourcesDao.insert(source)
+            } else {
+                _sourcesDao.update(source)
+                source.id
+            }
         } catch (_: Exception) {
             null
         }

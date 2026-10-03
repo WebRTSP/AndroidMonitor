@@ -3,9 +3,11 @@ cmake_minimum_required(VERSION 3.28)
 project(Monitor.native)
 
 set(HTTP_SUPPORT OFF CACHE BOOL "HTTP server is not used" FORCE)
-set(WS_SERVER_SUPPORT  OFF CACHE BOOL "libwebsocket based server is not used" FORCE)
-set(WS_CLIENT_SUPPORT OFF CACHE BOOL "libwebsocket based client is not used" FORCE)
+set(SIGNALLING_SUPPORT ON CACHE BOOL "libwebsocket based client is used" FORCE)
 set(ONVIF_SUPPORT ON CACHE BOOL "ONVIF used" FORCE)
+
+set(CMAKE_CXX_STANDARD 20)
+
 add_subdirectory(WebRTSP)
 
 find_package(PkgConfig REQUIRED)
@@ -30,16 +32,24 @@ pkg_check_modules(GST_PLUGINS REQUIRED
 )
 
 set(SOURCES
+    Log.h
+    Log.cpp
     JVMHelpers.h
     JVMHelpers.cpp
     JVMBridge.h
     JVMBridge.cpp
+    ONVIFHelpers.h
+    ONVIFHelpers.cpp
     ONVIFDiscoverer.cpp
     ONVIFUrlFetcher.cpp
     ONVIFEventsChecker.cpp
     GStreamerHelpers.h
     GStreamerHelpers.cpp
     GStreamerPlayer.cpp
+    ReStreamer.cpp
+    AgentSession.h
+    AgentSession.cpp
+    main.h
     main.cpp
 )
 
@@ -64,6 +74,8 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     Helpers
     CxxPtr
     ONVIF
+    Signalling
+    RtStreaming
 )
 
 #get_cmake_property(_variableNames VARIABLES)

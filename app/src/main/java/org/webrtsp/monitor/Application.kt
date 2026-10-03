@@ -13,6 +13,8 @@ import androidx.lifecycle.lifecycleScope
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.launch
 import org.webrtsp.monitor.onvif.ONVIFEventTrackerService
+import org.webrtsp.monitor.restreamer.ReStreamerService
+import org.webrtsp.monitor.restreamer.ReStreamerSettingsRepository
 import javax.inject.Inject
 
 
@@ -22,6 +24,8 @@ class Application : android.app.Application() {
     lateinit var permissionsRepository: PermissionsRepository
     @Inject
     lateinit var settingsRepository: SettingsRepository
+    @Inject
+    lateinit var reStreamerSettingsRepository: ReStreamerSettingsRepository
     @Inject
     lateinit var motionEventHandler: MotionEventHandler
 
@@ -67,6 +71,17 @@ class Application : android.app.Application() {
                             activeSource)
                     } else {
                         ONVIFEventTrackerService.stopTracking(applicationContext)
+                    }
+                }
+        }
+        scope.launch {
+            reStreamerSettingsRepository.settingsFlow
+                .flowWithLifecycle(lifecycle, Lifecycle.State.STARTED)
+                .collect { settings ->
+                    if(settings.reStreamerEnabled) {
+                        ReStreamerService.startReStream(applicationContext)
+                    } else {
+                        ReStreamerService.stopReStream(applicationContext)
                     }
                 }
         }

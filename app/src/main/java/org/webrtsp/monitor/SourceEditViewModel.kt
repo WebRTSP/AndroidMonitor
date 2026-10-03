@@ -9,6 +9,7 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toPersistentList
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
@@ -18,12 +19,15 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import org.webrtsp.monitor.onvif.ONVIFDiscoverer
+import org.webrtsp.monitor.restreamer.ReStreamerSettingsRepository
+import org.webrtsp.monitor.restreamer.toReStreamSource
 import javax.inject.Inject
 
 
 @HiltViewModel
 class SourceEditViewModel @Inject constructor(
     private val _settingsRepository: SettingsRepository,
+    private val _reStreamerSettingsRepository: ReStreamerSettingsRepository,
 ) : ViewModel() {
     companion object {
         const val TAG = "SourceEditViewModel"
@@ -46,8 +50,6 @@ class SourceEditViewModel @Inject constructor(
             initialValue = true
         )
 
-    val savedSourcesFlow = _settingsRepository.allSourcesFlow
-
     private val _activeSourceId = _settingsRepository.activeSourceIdFlow
         .map { DelayedValue.Ready(it) }
         .stateIn(
@@ -68,8 +70,20 @@ class SourceEditViewModel @Inject constructor(
             SharingStarted.WhileSubscribed(5000),
             initialValue = true
         )
+    val sharingEnabled = _reStreamerSettingsRepository.settingsFlow
+        .map { settings ->
+            settings.reStreamerEnabled && settings.credentials != null
+        }
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5000),
+            initialValue = false
+        )
 
-    val sources = savedSourcesFlow.combine(_discoveredCams) { saved, discovered ->
+    val sources = combine(
+            _settingsRepository.allSourcesFlow,
+            _discoveredCams
+        ) { saved, discovered ->
             val discovered = discovered.associateByTo(
                 mutableMapOf<UrlOrigin, ONVIFDiscoverer.Camera>()
             ) { it.endpoint.toOrigin() }
@@ -137,8 +151,8 @@ class SourceEditViewModel @Inject constructor(
         selectedSourcePasswordState.setTextAndPlaceCursorAtEnd(source.password ?: String())
     }
 
-    fun updateSelected(activate: Boolean = false) {
-        var selectedSource = selectedSource.value ?: return
+    fun updateSelected(activate: Boolean = false): Job? {
+        var selectedSource = selectedSource.value ?: return null
 
         val userName = selectedSourceUserNameState.text.toString().run { ifEmpty { null } }
         val password = selectedSourcePasswordState.text.toString().run { ifEmpty { null } }
@@ -158,7 +172,7 @@ class SourceEditViewModel @Inject constructor(
             _selectedSource.value = it
         }
 
-        viewModelScope.launch {
+        return viewModelScope.launch {
             val databaseId = _settingsRepository.addOrUpdate(selectedSource)
             if(activate) {
                 _settingsRepository.setActiveSource(databaseId)
@@ -166,8 +180,8 @@ class SourceEditViewModel @Inject constructor(
         }
     }
 
-    fun dropSelected() {
-        val selectedSource = selectedSource.value ?: return
+    fun dropSelected(): Job? {
+        val selectedSource = selectedSource.value ?: return null
         val activeSource = activeSource.value
 
         if(activeSource != null && activeSource.isTheSameAs(selectedSource)) {
@@ -176,7 +190,7 @@ class SourceEditViewModel @Inject constructor(
             _selectedSource.value = activeSource
         }
 
-        viewModelScope.launch {
+        return viewModelScope.launch {
             (_activeSourceId.first { it != DelayedValue.Loading } as DelayedValue.Ready)
                 .also { sourceId ->
                     if(sourceId.value == selectedSource.id)
@@ -185,6 +199,23 @@ class SourceEditViewModel @Inject constructor(
 
             _settingsRepository.drop(selectedSource)
         }
+    }
+
+    suspend fun buildSourcesShareText(): String {
+        return combine(_settingsRepository.allSourcesFlow,
+            _reStreamerSettingsRepository.settingsFlow
+        ) { sources, settings ->
+            val credentials = settings.credentials ?: return@combine String()
+
+            updateSelected()?.join()
+
+            sources.joinToString(separator = "\n") { source ->
+                with(source.toReStreamSource()) {
+                    "${if(name.isNullOrBlank()) url.toUri().toOrigin() else name}: " +
+                    "${settings.viewServerUrl}#${accessToken}@${credentials.agentId}/${id}"
+                }
+            }
+        }.first()
     }
 
     override fun onCleared() {

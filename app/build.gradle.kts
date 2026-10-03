@@ -4,6 +4,11 @@ plugins {
     alias(libs.plugins.devtools.ksp)
     alias(libs.plugins.hilt.android)
     alias(libs.plugins.jetbrains.kotlin.serialization)
+    alias(libs.plugins.androidx.room)
+}
+
+room {
+    schemaDirectory("$projectDir/schemas")
 }
 
 android {
@@ -12,12 +17,19 @@ android {
         version = release(37)
     }
 
+    buildFeatures {
+        buildConfig = true
+    }
     defaultConfig {
         applicationId = "org.webrtsp.monitor"
         minSdk = 28
         targetSdk = 36
-        versionCode = 8
-        versionName = "0.1.0.$versionCode"
+        versionCode = 9
+        versionName = "0.2.0"
+
+        buildConfigField("String", "API_SERVER_URL", "\"https://signaling.webrtsp.org:5443/api/\"")
+        buildConfigField("String", "VIEW_SERVER_URL", "\"https://signaling.webrtsp.org/view\"")
+        buildConfigField("String", "SIGNALING_SERVER_URL", "\"webrtsps://signaling.webrtsp.org/\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -32,7 +44,6 @@ android {
             }
         }
     }
-
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -48,7 +59,6 @@ android {
     }
     buildFeatures {
         compose = true
-        buildConfig = true
     }
     externalNativeBuild {
         cmake {
@@ -77,6 +87,7 @@ dependencies {
     implementation(libs.androidx.material3)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
+    implementation(libs.sqids.kotlin)
     ksp(libs.androidx.room.compiler)
     implementation(libs.google.android.material)
     implementation(libs.hilt.android)
@@ -89,5 +100,9 @@ dependencies {
     implementation(libs.androidx.navigation3.ui)
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.kotlinx.collections.immutable)
+    implementation(libs.ktor.client.core)
+    implementation(libs.ktor.client.cio)
+    implementation(libs.ktor.client.content.negotiation)
+    implementation(libs.ktor.serialization.kotlinx.json)
     debugImplementation(libs.androidx.compose.ui.tooling)
 }
