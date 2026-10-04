@@ -6,7 +6,10 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -46,14 +49,18 @@ class SettingsRepository @Inject constructor(
 
     val activeSourceIdFlow: Flow<SourceId?> = _dataStore.data
         .map { preferences -> preferences[Keys.ACTIVE_SOURCE_ID] }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
     val activeSourceFlow: Flow<Source?> = _dataStore.data
-        .map { preferences ->
+        .flatMapLatest { preferences ->
             val activeSourceId = preferences[Keys.ACTIVE_SOURCE_ID]
+
             if(activeSourceId == null)
-                null
+                flowOf(null)
             else
-                _sourcesDao.findById(activeSourceId)?.toSource()
+                _sourcesDao.byId(activeSourceId)
         }
+        .map { sourceEntity -> sourceEntity?.toSource() }
 
     val settingsFlow: Flow<Settings> = _dataStore.data
         .map { preferences ->
@@ -61,7 +68,7 @@ class SettingsRepository @Inject constructor(
             val activeSource = if(activeSourceId == null)
                 null
             else
-                _sourcesDao.findById(activeSourceId)?.toSource()
+                _sourcesDao.getById(activeSourceId)?.toSource()
 
             Settings(
                 activeSource,

@@ -134,13 +134,14 @@ interface SourcesDao {
     }
 
     @Query("SELECT * FROM sources")
-    fun getAll(): List<SourceEntity>
+    suspend fun getAll(): List<SourceEntity>
+    @Query("SELECT * FROM sources WHERE id = :id LIMIT 1")
+    suspend fun getById(id: SourceId): SourceEntity?
 
     @Query("SELECT * FROM sources")
     fun all(): Flow<List<SourceEntity>>
-
     @Query("SELECT * FROM sources WHERE id = :id LIMIT 1")
-    suspend fun findById(id: SourceId): SourceEntity?
+    fun byId(id: SourceId): Flow<SourceEntity?>
 
     @Insert
     suspend fun insert(source: SourceEntity): Long
