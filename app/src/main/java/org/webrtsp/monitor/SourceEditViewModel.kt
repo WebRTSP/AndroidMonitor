@@ -143,7 +143,7 @@ class SourceEditViewModel @Inject constructor(
 
     private fun selectSource(source: Source?, flushSelected: Boolean) {
         if(flushSelected)
-            updateSelected()
+            flushSelectedChanges()
 
         _selectedSource.value = source
         selectedSourceNameState.setTextAndPlaceCursorAtEnd(source?.name ?: String())
@@ -156,7 +156,7 @@ class SourceEditViewModel @Inject constructor(
         selectSource(source, true)
     }
 
-    fun updateSelected(activate: Boolean = false): Job? {
+    fun flushSelectedChanges(activate: Boolean = false): Job? {
         var selectedSource = selectedSource.value ?: return null
 
         val userName = selectedSourceUserNameState.text.toString().run { ifEmpty { null } }
@@ -179,9 +179,8 @@ class SourceEditViewModel @Inject constructor(
 
         return viewModelScope.launch {
             val databaseId = _settingsRepository.addOrUpdate(selectedSource)
-            if(activate) {
+            if(activate)
                 _settingsRepository.setActiveSource(databaseId)
-            }
         }
     }
 
@@ -212,7 +211,7 @@ class SourceEditViewModel @Inject constructor(
         ) { sources, settings ->
             val credentials = settings.credentials ?: return@combine String()
 
-            updateSelected()?.join()
+            flushSelectedChanges()?.join()
 
             sources.joinToString(separator = "\n") { source ->
                 with(source.toReStreamSource()) {

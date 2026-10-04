@@ -479,7 +479,7 @@ fun SourceEditScreen(
                     }
                     FilledTonalIconButton(
                         onClick = {
-                            viewModel.updateSelected(activate = true)
+                            viewModel.flushSelectedChanges(activate = true)
                             onComplete(viewModel.selectedSource.value)
                         },
                         enabled = enableConfirmButton,
