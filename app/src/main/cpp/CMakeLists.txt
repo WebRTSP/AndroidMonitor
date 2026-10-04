@@ -26,7 +26,7 @@ pkg_check_modules(GST_PLUGINS REQUIRED
     gstrtsp
     gstudp
     gstrtp
-    gstopenh264
+    gstlibav
     gstvideoparsersbad
     gstrtpmanager
 )

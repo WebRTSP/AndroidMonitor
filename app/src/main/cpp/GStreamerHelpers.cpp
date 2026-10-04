@@ -13,7 +13,7 @@ namespace {
         GST_PLUGIN_STATIC_DECLARE(rtsp);
         GST_PLUGIN_STATIC_DECLARE(udp);
         GST_PLUGIN_STATIC_DECLARE(rtp);
-        GST_PLUGIN_STATIC_DECLARE(openh264);
+        GST_PLUGIN_STATIC_DECLARE(libav);
         GST_PLUGIN_STATIC_DECLARE(videoparsersbad);
         GST_PLUGIN_STATIC_DECLARE(rtpmanager);
         GST_PLUGIN_STATIC_DECLARE(webrtc);
@@ -30,7 +30,7 @@ namespace {
         GST_PLUGIN_STATIC_REGISTER(rtsp);
         GST_PLUGIN_STATIC_REGISTER(udp);
         GST_PLUGIN_STATIC_REGISTER(rtp);
-        GST_PLUGIN_STATIC_REGISTER(openh264);
+        GST_PLUGIN_STATIC_REGISTER(libav);
         GST_PLUGIN_STATIC_REGISTER(videoparsersbad);
         GST_PLUGIN_STATIC_REGISTER(rtpmanager);
         GST_PLUGIN_STATIC_REGISTER(webrtc);
