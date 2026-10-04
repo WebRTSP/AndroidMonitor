@@ -141,14 +141,19 @@ class SourceEditViewModel @Inject constructor(
         )
     }
 
-    fun selectSource(source: Source) {
-        updateSelected()
+    private fun selectSource(source: Source?, flushSelected: Boolean) {
+        if(flushSelected)
+            updateSelected()
 
         _selectedSource.value = source
-        selectedSourceNameState.setTextAndPlaceCursorAtEnd(source.name ?: String())
-        selectedSourceUrlState.setTextAndPlaceCursorAtEnd(source.url.toString())
-        selectedSourceUserNameState.setTextAndPlaceCursorAtEnd(source.userName ?: String())
-        selectedSourcePasswordState.setTextAndPlaceCursorAtEnd(source.password ?: String())
+        selectedSourceNameState.setTextAndPlaceCursorAtEnd(source?.name ?: String())
+        selectedSourceUrlState.setTextAndPlaceCursorAtEnd(source?.url.toString())
+        selectedSourceUserNameState.setTextAndPlaceCursorAtEnd(source?.userName ?: String())
+        selectedSourcePasswordState.setTextAndPlaceCursorAtEnd(source?.password ?: String())
+    }
+
+    fun selectSource(source: Source) {
+        selectSource(source, true)
     }
 
     fun updateSelected(activate: Boolean = false): Job? {
@@ -187,7 +192,7 @@ class SourceEditViewModel @Inject constructor(
         if(activeSource != null && activeSource.isTheSameAs(selectedSource)) {
             _selectedSource.value = null
         } else {
-            _selectedSource.value = activeSource
+            selectSource(activeSource, false)
         }
 
         return viewModelScope.launch {
