@@ -1,5 +1,6 @@
 package org.webrtsp.monitor.restreamer
 
+import android.annotation.SuppressLint
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -8,8 +9,11 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
+import android.os.PowerManager
+import android.os.PowerManager.PARTIAL_WAKE_LOCK
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.getSystemService
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
@@ -203,23 +207,37 @@ class ReStreamerService: LifecycleService() {
 
                     val credentials = settings.credentials ?: return@collectLatest
 
-                    with(settings) {
-                        ReStreamer(signalingServerUrl, clientId, credentials)
+                    val wakeLock = getSystemService<PowerManager>()?.run {
+                        if(isWakeLockLevelSupported(PARTIAL_WAKE_LOCK))
+                            newWakeLock(PARTIAL_WAKE_LOCK, "$packageName:$TAG")
+                        else
+                            null
                     }
-                    .use { reStreamer ->
-                        coroutineScope {
-                            launch {
-                                reStreamer.credentials.collect { credentials ->
-                                    reStreamerSettingsRepository.setReStreamerCredentials(credentials)
+
+                    try {
+                        @SuppressLint("WakelockTimeout")
+                        wakeLock?.acquire()
+
+                        with(settings) {
+                            ReStreamer(signalingServerUrl, clientId, credentials)
+                        }
+                        .use { reStreamer ->
+                            coroutineScope {
+                                launch {
+                                    reStreamer.credentials.collect { credentials ->
+                                        reStreamerSettingsRepository.setReStreamerCredentials(credentials)
+                                    }
+                                }
+
+                                reStreamer.state.first { it == ReStreamer.State.Connected }
+
+                                settingsRepository.allSourcesFlow.collect { sources ->
+                                    reStreamer.updateSources(sources.map { it.toReStreamSource() })
                                 }
                             }
-
-                            reStreamer.state.first { it == ReStreamer.State.Connected }
-
-                            settingsRepository.allSourcesFlow.collect { sources ->
-                                reStreamer.updateSources(sources.map { it.toReStreamSource() })
-                            }
                         }
+                    } finally {
+                        wakeLock?.release()
                     }
                 }
             }
