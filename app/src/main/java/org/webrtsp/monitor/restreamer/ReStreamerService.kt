@@ -16,6 +16,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -211,16 +212,18 @@ class ReStreamerService: LifecycleService() {
                             ReStreamer(signalingServerUrl, clientId, credentials)
                         }
                         .use { reStreamer ->
-                            launch {
-                                reStreamer.credentials.collect { credentials ->
-                                    reStreamerSettingsRepository.setReStreamerCredentials(credentials)
+                            coroutineScope {
+                                launch {
+                                    reStreamer.credentials.collect { credentials ->
+                                        reStreamerSettingsRepository.setReStreamerCredentials(credentials)
+                                    }
                                 }
-                            }
 
-                            reStreamer.state.first { it == ReStreamer.State.Connected }
+                                reStreamer.state.first { it == ReStreamer.State.Connected }
 
-                            settingsRepository.allSourcesFlow.collect { sources ->
-                                reStreamer.updateSources(sources.map { it.toReStreamSource() })
+                                settingsRepository.allSourcesFlow.collect { sources ->
+                                    reStreamer.updateSources(sources.map { it.toReStreamSource() })
+                                }
                             }
                         }
                     }
