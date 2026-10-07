@@ -15,14 +15,11 @@ import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -185,7 +182,6 @@ class ReStreamerService: LifecycleService() {
         createNotificationChannel()
 
         lifecycleScope.launch {
-            @OptIn(ExperimentalCoroutinesApi::class)
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 combine(reStreamerSettingsRepository.settingsFlow,
                     // just to activate credentials fetch
@@ -199,36 +195,33 @@ class ReStreamerService: LifecycleService() {
                 .combine(powerStateRepository.isPowerSufficient) { settings, isPowerSufficient ->
                     settings to isPowerSufficient
                 }
-                .flatMapLatest { (settings, isPowerSufficient) ->
-                    flow<Unit> {
-                        updateNotification(isPowerSufficient)
+                .collectLatest { (settings, isPowerSufficient) ->
+                    updateNotification(isPowerSufficient)
 
-                        if(!isPowerSufficient)
-                            return@flow
+                    if(!isPowerSufficient)
+                        return@collectLatest
 
-                        val credentials = settings.credentials ?: return@flow
+                    val credentials = settings.credentials ?: return@collectLatest
 
-                        with(settings) {
-                            ReStreamer(signalingServerUrl, clientId, credentials)
-                        }
-                        .use { reStreamer ->
-                            coroutineScope {
-                                launch {
-                                    reStreamer.credentials.collect { credentials ->
-                                        reStreamerSettingsRepository.setReStreamerCredentials(credentials)
-                                    }
+                    with(settings) {
+                        ReStreamer(signalingServerUrl, clientId, credentials)
+                    }
+                    .use { reStreamer ->
+                        coroutineScope {
+                            launch {
+                                reStreamer.credentials.collect { credentials ->
+                                    reStreamerSettingsRepository.setReStreamerCredentials(credentials)
                                 }
+                            }
 
-                                reStreamer.state.first { it == ReStreamer.State.Connected }
+                            reStreamer.state.first { it == ReStreamer.State.Connected }
 
-                                settingsRepository.allSourcesFlow.collect { sources ->
-                                    reStreamer.updateSources(sources.map { it.toReStreamSource() })
-                                }
+                            settingsRepository.allSourcesFlow.collect { sources ->
+                                reStreamer.updateSources(sources.map { it.toReStreamSource() })
                             }
                         }
                     }
                 }
-                .collect()
             }
         }
     }
