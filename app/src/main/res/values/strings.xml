@@ -24,6 +24,7 @@
 
     <string name="restreamer_notification_channel_name">Video sources sharing</string>
     <string name="restreamer_notification_title">Sharing video sources</string>
+    <string name="restreamer_notification_suspended_title">video sharing suspended</string>
     <string name="stop_restreamer_notification_action">Stop sharing</string>
 
     <string name="motion_events_channel_name">Motion notifications</string>

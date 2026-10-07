@@ -22,5 +22,6 @@
     <string name="stop_motion_tracking_notification_action">Остановить</string>
     <string name="restreamer_notification_channel_name">Ретрансляция видео</string>
     <string name="restreamer_notification_title">Ретрансляция видео активна</string>
+    <string name="restreamer_notification_suspended_title">Ретрансляция видео приостановлена</string>
     <string name="stop_restreamer_notification_action">Остановить</string>
 </resources>

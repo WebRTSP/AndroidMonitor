@@ -28,6 +28,7 @@ import kotlinx.coroutines.sync.withLock
 import org.sqids.Sqids
 import org.webrtsp.monitor.CROCKFORD_BASE32_ALPHABET
 import org.webrtsp.monitor.MainActivity
+import org.webrtsp.monitor.PowerStateRepository
 import org.webrtsp.monitor.R
 import org.webrtsp.monitor.SettingsRepository
 import org.webrtsp.monitor.SourceEntity
@@ -110,6 +111,8 @@ class ReStreamerService: LifecycleService() {
     lateinit var settingsRepository: SettingsRepository
     @Inject
     lateinit var reStreamerSettingsRepository: ReStreamerSettingsRepository
+    @Inject
+    lateinit var powerStateRepository: PowerStateRepository
 
     private fun createNotificationChannel() {
         if(_notificationManager.getNotificationChannel(NOTIFICATION_CHANEL_ID) != null)
@@ -125,10 +128,13 @@ class ReStreamerService: LifecycleService() {
         _notificationManager.createNotificationChannel(channel)
     }
 
-    private fun buildNotification(): Notification {
+    private fun buildNotification(active: Boolean): Notification {
         return NotificationCompat.Builder(applicationContext, NOTIFICATION_CHANEL_ID)
             .setSmallIcon(R.drawable.videocam)
-            .setContentTitle(getString(R.string.restreamer_notification_title))
+            .setContentTitle(
+                getString(
+                    if(active) R.string.restreamer_notification_title
+                    else R.string.restreamer_notification_suspended_title))
             .setPriority(NotificationCompat.PRIORITY_MIN)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .setBadgeIconType(NotificationCompat.BADGE_ICON_NONE)
@@ -165,6 +171,13 @@ class ReStreamerService: LifecycleService() {
             .build()
     }
 
+    @SuppressLint("MissingPermission")
+    private fun updateNotification(active: Boolean) {
+        val notification = buildNotification(active)
+
+        _notificationManager.notify(NOTIFICATION_ID, notification)
+    }
+
     override fun onCreate() {
         super.onCreate()
 
@@ -182,8 +195,16 @@ class ReStreamerService: LifecycleService() {
                     oldSettings.reStreamerEnabled == settings.reStreamerEnabled &&
                     oldSettings.credentials == settings.credentials
                 }
-                .flatMapLatest { settings ->
+                .combine(powerStateRepository.isPowerSufficient) { settings, isPowerSufficient ->
+                    settings to isPowerSufficient
+                }
+                .flatMapLatest { (settings, isPowerSufficient) ->
                     flow<Unit> {
+                        updateNotification(isPowerSufficient)
+
+                        if(!isPowerSufficient)
+                            return@flow
+
                         val credentials = settings.credentials ?: return@flow
 
                         with(settings) {
@@ -210,7 +231,7 @@ class ReStreamerService: LifecycleService() {
     }
 
     private fun startForeground() {
-        val notification = buildNotification()
+        val notification = buildNotification(true)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             startForeground(
