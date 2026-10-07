@@ -21,6 +21,7 @@ import androidx.lifecycle.lifecycleScope
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collectLatest
@@ -163,23 +164,25 @@ class ONVIFEventTrackerService: LifecycleService() {
                                 userName,
                                 password
                             ).use { checker ->
-                                checker.motionDetectedFlow
-                                    .onEach {
-                                        eventTrackingRepository.emitMotionDetected(endpoint.toOrigin())
-                                    }
-                                    .launchIn(this@launch)
+                                coroutineScope {
+                                    checker.motionDetectedFlow
+                                        .onEach {
+                                            eventTrackingRepository.emitMotionDetected(endpoint.toOrigin())
+                                        }
+                                        .launchIn(this)
 
-                                while(true) {
-                                    val state = checker.state.first { state ->
-                                        state == ONVIFEventsChecker.State.Idle ||
-                                        state == ONVIFEventsChecker.State.Error
+                                    while(true) {
+                                        val state = checker.state.first { state ->
+                                            state == ONVIFEventsChecker.State.Idle ||
+                                            state == ONVIFEventsChecker.State.Error
+                                        }
+                                        if(state == ONVIFEventsChecker.State.Error) {
+                                            delay(5.seconds)
+                                        } else {
+                                            delay(1.seconds)
+                                        }
+                                        checker.checkEvents()
                                     }
-                                    if(state == ONVIFEventsChecker.State.Error) {
-                                        delay(5.seconds)
-                                    } else {
-                                        delay(1.seconds)
-                                    }
-                                    checker.checkEvents()
                                 }
                             }
                         }
