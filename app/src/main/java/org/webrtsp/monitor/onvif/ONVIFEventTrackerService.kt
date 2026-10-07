@@ -10,8 +10,11 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.net.Uri
 import android.os.Build
+import android.os.PowerManager
+import android.os.PowerManager.PARTIAL_WAKE_LOCK
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.getSystemService
 import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleService
@@ -159,31 +162,45 @@ class ONVIFEventTrackerService: LifecycleService() {
                     if(eventSource != null && isBackgrounded && isPowerSufficient) {
                         updateNotification(eventSource, true)
                         with(eventSource) {
-                            ONVIFEventsChecker(
-                                endpoint,
-                                userName,
-                                password
-                            ).use { checker ->
-                                coroutineScope {
-                                    checker.motionDetectedFlow
-                                        .onEach {
-                                            eventTrackingRepository.emitMotionDetected(endpoint.toOrigin())
-                                        }
-                                        .launchIn(this)
+                            val wakeLock = getSystemService<PowerManager>()?.run {
+                                if(isWakeLockLevelSupported(PARTIAL_WAKE_LOCK))
+                                    newWakeLock(PARTIAL_WAKE_LOCK, "$packageName:$TAG")
+                                else
+                                    null
+                            }
 
-                                    while(true) {
-                                        val state = checker.state.first { state ->
-                                            state == ONVIFEventsChecker.State.Idle ||
-                                            state == ONVIFEventsChecker.State.Error
+                            try {
+                                @SuppressLint("WakelockTimeout")
+                                wakeLock?.acquire()
+
+                                ONVIFEventsChecker(
+                                    endpoint,
+                                    userName,
+                                    password
+                                ).use { checker ->
+                                    coroutineScope {
+                                        checker.motionDetectedFlow
+                                            .onEach {
+                                                eventTrackingRepository.emitMotionDetected(endpoint.toOrigin())
+                                            }
+                                            .launchIn(this)
+
+                                        while(true) {
+                                            val state = checker.state.first { state ->
+                                                state == ONVIFEventsChecker.State.Idle ||
+                                                state == ONVIFEventsChecker.State.Error
+                                            }
+                                            if(state == ONVIFEventsChecker.State.Error) {
+                                                delay(5.seconds)
+                                            } else {
+                                                delay(1.seconds)
+                                            }
+                                            checker.checkEvents()
                                         }
-                                        if(state == ONVIFEventsChecker.State.Error) {
-                                            delay(5.seconds)
-                                        } else {
-                                            delay(1.seconds)
-                                        }
-                                        checker.checkEvents()
                                     }
                                 }
+                            } finally {
+                                wakeLock?.release()
                             }
                         }
                     } else {
