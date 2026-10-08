@@ -1,5 +1,6 @@
 package org.webrtsp.monitor.restreamer
 
+import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -110,6 +111,60 @@ class ReStreamerService: LifecycleService() {
     @Inject
     lateinit var reStreamerSettingsRepository: ReStreamerSettingsRepository
 
+    private fun createNotificationChannel() {
+        if(_notificationManager.getNotificationChannel(NOTIFICATION_CHANEL_ID) != null)
+            return
+
+        val channel = NotificationChannel(
+            NOTIFICATION_CHANEL_ID,
+            getString(R.string.restreamer_notification_channel_name),
+            NotificationManager.IMPORTANCE_MIN
+        ).apply {
+            setShowBadge(false)
+        }
+        _notificationManager.createNotificationChannel(channel)
+    }
+
+    private fun buildNotification(): Notification {
+        return NotificationCompat.Builder(applicationContext, NOTIFICATION_CHANEL_ID)
+            .setSmallIcon(R.drawable.videocam)
+            .setContentTitle(getString(R.string.restreamer_notification_title))
+            .setPriority(NotificationCompat.PRIORITY_MIN)
+            .setCategory(NotificationCompat.CATEGORY_SERVICE)
+            .setBadgeIconType(NotificationCompat.BADGE_ICON_NONE)
+            .setOngoing(false)
+            .apply {
+                val intent = Intent(
+                    applicationContext,
+                    MainActivity::class.java
+                ).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                }
+                val pendingIntent = PendingIntent.getActivity(
+                    applicationContext,
+                    0,
+                    intent,
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                )
+                setContentIntent(pendingIntent)
+            }
+            .apply {
+                // FIXME? replace with BroadcastReceiver target
+                // to be able remove related configuration flag
+                val pendingIntent = PendingIntent.getService(
+                    applicationContext,
+                    0,
+                    stopIntent(applicationContext),
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                )
+                addAction(
+                    R.drawable.videocam_off,
+                    getString(R.string.stop_restreamer_notification_action),
+                    pendingIntent)
+            }
+            .build()
+    }
+
     override fun onCreate() {
         super.onCreate()
 
@@ -154,58 +209,8 @@ class ReStreamerService: LifecycleService() {
         }
     }
 
-    private fun createNotificationChannel() {
-        if(_notificationManager.getNotificationChannel(NOTIFICATION_CHANEL_ID) != null)
-            return
-
-        val channel = NotificationChannel(
-            NOTIFICATION_CHANEL_ID,
-            getString(R.string.restreamer_notification_channel_name),
-            NotificationManager.IMPORTANCE_MIN
-        ).apply {
-            setShowBadge(false)
-        }
-        _notificationManager.createNotificationChannel(channel)
-    }
-
     private fun startForeground() {
-        val notification = NotificationCompat.Builder(applicationContext, NOTIFICATION_CHANEL_ID)
-            .setSmallIcon(R.drawable.videocam)
-            .setContentTitle(getString(R.string.restreamer_notification_title))
-            .setPriority(NotificationCompat.PRIORITY_MIN)
-            .setCategory(NotificationCompat.CATEGORY_SERVICE)
-            .setBadgeIconType(NotificationCompat.BADGE_ICON_NONE)
-            .setOngoing(false)
-            .apply {
-                val intent = Intent(
-                    applicationContext,
-                    MainActivity::class.java
-                ).apply {
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-                }
-                val pendingIntent = PendingIntent.getActivity(
-                    applicationContext,
-                    0,
-                    intent,
-                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-                )
-                setContentIntent(pendingIntent)
-            }
-            .apply {
-                // FIXME? replace with BroadcastReceiver target
-                // to be able remove related configuration flag
-                val pendingIntent = PendingIntent.getService(
-                    applicationContext,
-                    0,
-                    stopIntent(applicationContext),
-                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-                )
-                addAction(
-                    R.drawable.videocam_off,
-                    getString(R.string.stop_restreamer_notification_action),
-                    pendingIntent)
-            }
-            .build()
+        val notification = buildNotification()
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             startForeground(
