@@ -8,14 +8,18 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.shareIn
+import org.webrtsp.monitor.ApplicationIoScope
 import org.webrtsp.monitor.BuildConfig
 import org.webrtsp.monitor.ReStreamerSettingsDataStore
 import java.util.UUID
@@ -47,6 +51,7 @@ private const val MAX_RETRY_INTERVAL = 16
 class ReStreamerSettingsRepository @Inject constructor(
     @param:ReStreamerSettingsDataStore private val _reStreamerDataStore: DataStore<Preferences>,
     private val _credentialsDataSource: CredentialsDataSource,
+    @ApplicationIoScope applicationScope: CoroutineScope,
 ) {
     companion object {
         const val TAG = "ReStreamerSettingsRepository"
@@ -124,6 +129,11 @@ class ReStreamerSettingsRepository @Inject constructor(
                 awaitClose()
             }
         }
+        .shareIn(
+            scope = applicationScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            replay = 1,
+        )
 
     suspend fun setReStreamerEnabled(reStreamerEnabled: Boolean) {
         _reStreamerDataStore.edit { preferences ->
