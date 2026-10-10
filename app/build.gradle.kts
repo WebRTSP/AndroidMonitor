@@ -24,8 +24,8 @@ android {
         applicationId = "org.webrtsp.monitor"
         minSdk = 28
         targetSdk = 36
-        versionCode = 11
-        versionName = "0.2.2"
+        versionCode = 12
+        versionName = "0.2.3"
 
         buildConfigField("String", "API_SERVER_URL", "\"https://signaling.webrtsp.org:5443/api/\"")
         buildConfigField("String", "VIEW_SERVER_URL", "\"https://signaling.webrtsp.org/view\"")
